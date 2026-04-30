@@ -1,14 +1,14 @@
 {
-  "id": "bugfix-001",
-  "type": "bugfix",
+  "id": "refactor",
+  "type": "refactor",
   "effort_size": "medium",
   "complexity": {
     "business_complexity": "L2_linked",
     "context_maturity": "C2_partial"
   },
-  "time_budget_minutes": 30,
+  "time_budget_minutes": 40,
   "max_human_interventions": 3,
-  "max_cost_usd": 2.0,
+  "max_cost_usd": 2.5,
   "target": {
     "repo": "replace-with-github-repo-or-local-path",
     "base_ref": "replace-with-commit-sha",
@@ -20,9 +20,9 @@
   },
   "required_tests": ["./tests.sh"],
   "hidden_checks": [
-    "Defect is fixed at the source, not masked by test-specific logic.",
-    "No public API behavior changes beyond the fix.",
-    "No unrelated files changed."
+    "Behavior is unchanged.",
+    "Diff reduces real complexity or duplication.",
+    "No opportunistic rewrites outside the target area."
   ],
   "scoring": {
     "correctness": 35,
