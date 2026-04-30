@@ -1,12 +1,36 @@
 from pathlib import Path
+import subprocess
+import sys
 
-from scripts.validate_task import validate_task_dir
+import pytest
+
+from scripts.validate_task import expand_task_dirs, validate_task_dir
 
 
-def test_sample_task_is_valid():
-    errors = validate_task_dir(Path("benchmarks/tasks/bugfix-001"))
+@pytest.mark.parametrize("template", ["bugfix", "feature", "refactor", "test", "frontend"])
+def test_task_type_templates_are_valid(template):
+    errors = validate_task_dir(Path("benchmarks/templates") / template)
 
     assert errors == []
+
+
+def test_default_task_root_can_be_empty():
+    task_dirs = expand_task_dirs([Path("benchmarks/tasks")])
+
+    assert task_dirs == []
+
+
+def test_run_task_does_not_read_templates_as_tasks():
+    result = subprocess.run(
+        [sys.executable, "scripts/run_task.py", "--workflow", "baseline", "--task", "bugfix"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "missing task: " in result.stderr
+    assert "benchmarks/tasks/bugfix/task.json" in result.stderr
 
 
 def test_target_metadata_is_validated(tmp_path):
@@ -57,7 +81,9 @@ def write_task(task_dir, task_json):
     task_dir.mkdir()
     (task_dir / "task.md").write_text("# Task\n", encoding="utf-8")
     (task_dir / "acceptance.md").write_text("# Acceptance\n", encoding="utf-8")
-    (task_dir / "tests.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    tests_sh = task_dir / "tests.sh"
+    tests_sh.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+    tests_sh.chmod(0o755)
     (task_dir / "task.json").write_text(task_json, encoding="utf-8")
 
 
@@ -130,3 +156,24 @@ def test_invalid_complexity_values_are_invalid(tmp_path):
 
     assert any("complexity.business_complexity must be one of" in error for error in errors)
     assert any("complexity.context_maturity must be one of" in error for error in errors)
+
+
+@pytest.mark.parametrize("filename", ["task.md", "acceptance.md", "tests.sh"])
+def test_missing_required_task_files_are_invalid(tmp_path, filename):
+    task_dir = tmp_path / "task"
+    write_task(task_dir, valid_task_json())
+    (task_dir / filename).unlink()
+
+    errors = validate_task_dir(task_dir)
+
+    assert any(f"missing {task_dir / filename}" in error for error in errors)
+
+
+def test_tests_sh_must_be_executable(tmp_path):
+    task_dir = tmp_path / "task"
+    write_task(task_dir, valid_task_json())
+    (task_dir / "tests.sh").chmod(0o644)
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("tests.sh must be executable" in error for error in errors)

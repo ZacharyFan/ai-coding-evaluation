@@ -1,14 +1,14 @@
 {
-  "id": "feature-001",
-  "type": "feature",
-  "effort_size": "medium",
+  "id": "test",
+  "type": "test",
+  "effort_size": "small",
   "complexity": {
-    "business_complexity": "L2_linked",
-    "context_maturity": "C2_partial"
+    "business_complexity": "L1_standardized",
+    "context_maturity": "C1_complete"
   },
-  "time_budget_minutes": 45,
-  "max_human_interventions": 4,
-  "max_cost_usd": 3.0,
+  "time_budget_minutes": 25,
+  "max_human_interventions": 2,
+  "max_cost_usd": 1.5,
   "target": {
     "repo": "replace-with-github-repo-or-local-path",
     "base_ref": "replace-with-commit-sha",
@@ -20,9 +20,9 @@
   },
   "required_tests": ["./tests.sh"],
   "hidden_checks": [
-    "Feature matches the acceptance criteria.",
-    "Edge cases are handled explicitly.",
-    "Existing API and UX contracts are preserved."
+    "Tests fail before the production fix or target behavior exists.",
+    "Assertions encode behavior, not implementation trivia.",
+    "Tests are stable and not over-mocked."
   ],
   "scoring": {
     "correctness": 35,

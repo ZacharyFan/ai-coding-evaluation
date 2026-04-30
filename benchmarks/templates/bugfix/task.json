@@ -1,18 +1,18 @@
 {
-  "id": "frontend-001",
-  "type": "frontend",
+  "id": "bugfix",
+  "type": "bugfix",
   "effort_size": "medium",
   "complexity": {
     "business_complexity": "L2_linked",
     "context_maturity": "C2_partial"
   },
-  "time_budget_minutes": 45,
-  "max_human_interventions": 4,
-  "max_cost_usd": 3.0,
+  "time_budget_minutes": 30,
+  "max_human_interventions": 3,
+  "max_cost_usd": 2.0,
   "target": {
     "repo": "replace-with-github-repo-or-local-path",
     "base_ref": "replace-with-commit-sha",
-    "language": "frontend",
+    "language": "replace-with-language",
     "package_manager": "replace-with-package-manager",
     "setup_commands": [],
     "test_commands": ["./tests.sh"],
@@ -20,9 +20,9 @@
   },
   "required_tests": ["./tests.sh"],
   "hidden_checks": [
-    "UI state is visually and behaviorally correct on desktop and mobile.",
-    "No text overlap or layout shift in the target viewport range.",
-    "Accessibility of the touched controls is not worse."
+    "Defect is fixed at the source, not masked by test-specific logic.",
+    "No public API behavior changes beyond the fix.",
+    "No unrelated files changed."
   ],
   "scoring": {
     "correctness": 35,

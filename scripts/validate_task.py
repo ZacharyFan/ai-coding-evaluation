@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,10 @@ def validate_task_dir(task_dir: Path) -> list[str]:
     for filename in ("task.json", "task.md", "acceptance.md", "tests.sh"):
         if not (task_dir / filename).exists():
             errors.append(f"missing {task_dir / filename}")
+
+    tests_sh = task_dir / "tests.sh"
+    if tests_sh.exists() and not os.access(tests_sh, os.X_OK):
+        errors.append(f"{tests_sh}: tests.sh must be executable")
 
     if not task_json.exists():
         return errors
