@@ -1,0 +1,36 @@
+{
+  "id": "frontend-001",
+  "type": "frontend",
+  "effort_size": "medium",
+  "complexity": {
+    "business_complexity": "L2_linked",
+    "context_maturity": "C2_partial"
+  },
+  "time_budget_minutes": 45,
+  "max_human_interventions": 4,
+  "max_cost_usd": 3.0,
+  "target": {
+    "repo": "replace-with-github-repo-or-local-path",
+    "base_ref": "replace-with-commit-sha",
+    "language": "frontend",
+    "package_manager": "replace-with-package-manager",
+    "setup_commands": [],
+    "test_commands": ["./tests.sh"],
+    "working_directory": "."
+  },
+  "required_tests": ["./tests.sh"],
+  "hidden_checks": [
+    "UI state is visually and behaviorally correct on desktop and mobile.",
+    "No text overlap or layout shift in the target viewport range.",
+    "Accessibility of the touched controls is not worse."
+  ],
+  "scoring": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

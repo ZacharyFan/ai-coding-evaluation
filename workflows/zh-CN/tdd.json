@@ -1,0 +1,16 @@
+{
+  "id": "tdd",
+  "name": "测试驱动编码",
+  "model_policy": "使用一个编码助手会话。实现前先新增或更新测试。",
+  "budget_policy": "最多使用 35% 的任务预算编写失败测试和设计测试。",
+  "human_intervention_policy": "人类可以拒绝没有准确表达任务行为的测试。",
+  "steps": [
+    "阅读 task.zh-CN.md、acceptance.zh-CN.md 和 tests.sh。",
+    "检查目标代码仓库。",
+    "新增或更新能因正确原因失败的测试。",
+    "实现能让测试通过的最小变更。",
+    "运行必跑测试。",
+    "记录 transcript、diff、test log、review notes 和 metrics。"
+  ]
+}
+

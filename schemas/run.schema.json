@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Coding Evaluation Run",
+  "type": "object",
+  "required": [
+    "workflow_id",
+    "task_id",
+    "duration_minutes",
+    "human_interventions",
+    "tests",
+    "diff",
+    "review"
+  ],
+  "properties": {
+    "workflow_id": { "type": "string" },
+    "task_id": { "type": "string" },
+    "target": {
+      "type": "object",
+      "properties": {
+        "repo": { "type": "string" },
+        "base_ref": { "type": "string" },
+        "language": { "type": "string" },
+        "package_manager": { "type": "string" },
+        "working_directory": { "type": "string" }
+      }
+    },
+    "model": { "type": "string" },
+    "duration_minutes": { "type": "number", "minimum": 0 },
+    "human_interventions": { "type": "integer", "minimum": 0 },
+    "cost_usd": { "type": "number", "minimum": 0 },
+    "tests": {
+      "type": "object",
+      "required": ["required_passed", "hidden_passed"],
+      "properties": {
+        "required_passed": { "type": "boolean" },
+        "hidden_passed": { "type": "boolean" }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "required": ["files_changed", "unrelated_files_changed"],
+      "properties": {
+        "files_changed": { "type": "integer", "minimum": 0 },
+        "unrelated_files_changed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "correctness",
+        "regression_safety",
+        "maintainability",
+        "test_quality",
+        "security",
+        "process_compliance"
+      ],
+      "properties": {
+        "correctness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "regression_safety": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maintainability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "test_quality": { "type": "number", "minimum": 0, "maximum": 1 },
+        "security": { "type": "number", "minimum": 0, "maximum": 1 },
+        "process_compliance": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "process_evidence": {
+      "type": "object",
+      "properties": {
+        "project_instructions_read": { "type": "boolean" },
+        "relevant_docs_read": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "knowledge_sources_used": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tools_used": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "plan_followed": { "type": "boolean" },
+        "review_performed": { "type": "boolean" }
+      }
+    },
+    "adoption": {
+      "type": "object",
+      "properties": {
+        "ai_generated_lines": { "type": "integer", "minimum": 0 },
+        "accepted_lines": { "type": "integer", "minimum": 0 },
+        "adoption_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "context_metrics": {
+      "type": "object",
+      "properties": {
+        "call_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "hit_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "adoption_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "hard_gates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "task_not_solved",
+          "security_issue",
+          "public_api_break",
+          "required_tests_failed",
+          "unrelated_changes",
+          "hidden_tests_failed"
+        ]
+      }
+    },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "attention_adjusted_score": { "type": "number", "minimum": 0 }
+  }
+}

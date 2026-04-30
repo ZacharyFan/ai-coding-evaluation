@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Coding Evaluation Task",
+  "type": "object",
+  "not": { "required": ["difficulty"] },
+  "required": ["id", "type", "effort_size", "complexity", "time_budget_minutes", "scoring"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": {
+      "type": "string",
+      "enum": ["bugfix", "feature", "refactor", "test", "frontend", "integration", "ci"]
+    },
+    "effort_size": {
+      "type": "string",
+      "enum": ["small", "medium", "large"],
+      "description": "Task size and budget pressure. This answers how large the work is, not how complex the business reasoning is."
+    },
+    "complexity": {
+      "type": "object",
+      "required": ["business_complexity", "context_maturity"],
+      "properties": {
+        "business_complexity": {
+          "type": "string",
+          "enum": ["L1_standardized", "L2_linked", "L3_complex"],
+          "description": "Business, state, interaction, or reasoning complexity."
+        },
+        "context_maturity": {
+          "type": "string",
+          "enum": ["C1_complete", "C2_partial", "C3_missing"],
+          "description": "How complete the project docs, component docs, APIs, examples, and knowledge base are for AI use."
+        }
+      }
+    },
+    "time_budget_minutes": { "type": "number", "minimum": 1 },
+    "max_human_interventions": { "type": "integer", "minimum": 0 },
+    "max_cost_usd": { "type": "number", "minimum": 0 },
+    "target": {
+      "type": "object",
+      "required": ["repo", "base_ref", "language", "test_commands"],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "GitHub repo, remote URL, or local filesystem path."
+        },
+        "base_ref": {
+          "type": "string",
+          "description": "Commit SHA, tag, or branch name used as the fixed starting point."
+        },
+        "language": {
+          "type": "string",
+          "examples": ["python", "typescript", "go", "rust", "java", "frontend"]
+        },
+        "package_manager": {
+          "type": "string",
+          "examples": ["pip", "uv", "npm", "pnpm", "yarn", "go", "cargo", "maven", "gradle"]
+        },
+        "setup_commands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "test_commands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "working_directory": {
+          "type": "string",
+          "description": "Path inside the target repo where setup and test commands should run."
+        }
+      }
+    },
+    "required_tests": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "hidden_checks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "scoring": {
+      "type": "object",
+      "required": [
+        "correctness",
+        "regression_safety",
+        "maintainability",
+        "test_quality",
+        "security",
+        "process_compliance",
+        "efficiency"
+      ],
+      "properties": {
+        "correctness": { "type": "number" },
+        "regression_safety": { "type": "number" },
+        "maintainability": { "type": "number" },
+        "test_quality": { "type": "number" },
+        "security": { "type": "number" },
+        "process_compliance": { "type": "number" },
+        "efficiency": { "type": "number" }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "test-001",
+  "type": "test",
+  "effort_size": "small",
+  "complexity": {
+    "business_complexity": "L1_standardized",
+    "context_maturity": "C1_complete"
+  },
+  "time_budget_minutes": 25,
+  "max_human_interventions": 2,
+  "max_cost_usd": 1.5,
+  "target": {
+    "repo": "replace-with-github-repo-or-local-path",
+    "base_ref": "replace-with-commit-sha",
+    "language": "replace-with-language",
+    "package_manager": "replace-with-package-manager",
+    "setup_commands": [],
+    "test_commands": ["./tests.sh"],
+    "working_directory": "."
+  },
+  "required_tests": ["./tests.sh"],
+  "hidden_checks": [
+    "Tests fail before the production fix or target behavior exists.",
+    "Assertions encode behavior, not implementation trivia.",
+    "Tests are stable and not over-mocked."
+  ],
+  "scoring": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

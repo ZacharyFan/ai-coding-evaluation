@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Coding Workflow",
+  "type": "object",
+  "required": ["id", "name", "model_policy", "steps"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "model_policy": { "type": "string" },
+    "budget_policy": { "type": "string" },
+    "human_intervention_policy": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

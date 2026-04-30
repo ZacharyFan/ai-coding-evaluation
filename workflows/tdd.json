@@ -1,0 +1,16 @@
+{
+  "id": "tdd",
+  "name": "Test-Driven Coding",
+  "model_policy": "Use one coding assistant session. Add or update tests before implementation.",
+  "budget_policy": "Spend up to 35% of the task budget on failing tests and test design.",
+  "human_intervention_policy": "Human may reject tests that do not encode the task behavior.",
+  "steps": [
+    "Read task.md, acceptance.md, and tests.sh.",
+    "Inspect the target repo.",
+    "Add or update tests that fail for the right reason.",
+    "Implement the smallest change that passes the tests.",
+    "Run required tests.",
+    "Record transcript, diff, test log, review notes, and metrics."
+  ]
+}
+
