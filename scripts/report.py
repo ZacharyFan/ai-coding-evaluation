@@ -15,11 +15,14 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def collect_runs(root: Path) -> list[dict[str, Any]]:
     runs = []
-    for path in sorted(root.glob("*/*/*/metrics.json")):
+    for path in sorted(root.glob("*/*/*/run.json")):
         if path.parent.name == "latest":
             continue
         data = load_json(path)
-        data["_path"] = str(path)
+        score_path = path.parent / "score.json"
+        if score_path.exists():
+            data.update(load_json(score_path))
+        data["_path"] = str(score_path if score_path.exists() else path)
         runs.append(data)
     return runs
 
@@ -78,7 +81,7 @@ def print_summary(runs: list[dict[str, Any]]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate a markdown report from run metrics.")
+    parser = argparse.ArgumentParser(description="Generate a markdown report from run and score files.")
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="Runs root directory")
     return parser.parse_args()
 
@@ -87,7 +90,7 @@ def main() -> None:
     args = parse_args()
     runs = collect_runs(args.runs)
     if not runs:
-        print("No run metrics found.")
+        print("No run facts found.")
         return
     print_runs(runs)
     print_summary(runs)

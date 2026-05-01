@@ -10,8 +10,8 @@
   "max_human_interventions": 4,
   "max_cost_usd": 3.0,
   "target": {
-    "repo": "replace-with-github-repo-or-local-path",
-    "base_ref": "replace-with-commit-sha",
+    "repo": "replace-with-public-git-url-or-local-path-for-benchmarks-local",
+    "base_ref": "replace-with-full-commit-sha",
     "language": "replace-with-language",
     "package_manager": "replace-with-package-manager",
     "setup_commands": [],
@@ -24,7 +24,7 @@
     "Edge cases are handled explicitly.",
     "Existing API and UX contracts are preserved."
   ],
-  "scoring": {
+  "scoring_weights": {
     "correctness": 35,
     "regression_safety": 15,
     "maintainability": 15,

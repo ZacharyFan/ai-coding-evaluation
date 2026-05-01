@@ -98,14 +98,18 @@ C3_missing       agent 需要推断或补齐缺失上下文
 transcript.md   AI/用户交互记录或摘要
 diff.patch      最终代码变更
 test.log        必跑测试和可选测试输出
-review.md       人工或 agent review
-metrics.json    用于评分的标准化指标
+run.json        评分前事实和 coding process evidence
+score.json      review 分、hard gates 和最终分
 ```
 
-v0.2 开始，`metrics.json` 也可以保留可选诊断证据：
+`prepare_run.py` 创建这组证据骨架，并把目标仓库 clone 到隔离的 run worktree。`execute_run.py` 执行目标项目的 setup/test 命令，写入 `test.log`，写入 `diff.patch`，并更新 `run.json`。人工 reviewer 直接维护 `score.json`，也可以用 `llm_review_run.py` 调用 OpenAI-compatible LLM 生成 review 维度。`score_run.py` 计算最终评分字段。
+
+如果一次 run 需要额外的长文本评审说明，可以在 run 目录放自定义文件。它不属于标准协议；结构化 review 备注统一放在 `score.json.review_notes`。
+
+v0.2 开始，`run.json` 也可以保留可选诊断证据：
 
 ```text
-process_evidence  agent 使用过的文档、工具、知识源和 review 轨迹
+process_evidence  coding 过程中使用过的文档、工具、知识源和自检轨迹
 adoption          可获得时记录 AI 生成行数、采纳行数和采纳率
 context_metrics   用于知识库/SPEC/skills 分析的调用率、命中率、采纳率
 ```

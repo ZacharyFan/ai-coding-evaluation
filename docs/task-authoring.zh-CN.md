@@ -9,7 +9,7 @@
 好用例有五个性质：
 
 - 真实：来自真实代码库，或足够忠实地抽取自真实任务
-- 固定：绑定目标仓库和 `base_ref`
+- 固定：绑定可 clone 的目标仓库和完整 commit SHA
 - 可观察：可以通过测试、review 或二者判断成败
 - 有边界：预期 diff 足够收敛，能被 review
 - 公平：每个 workflow 拿到相同说明和相同起点
@@ -18,15 +18,15 @@
 
 ## 需要编写的文件
 
-从 `benchmarks/templates/` 中最接近的类型模板复制开始，然后放到 `benchmarks/tasks/<task-id>`。
+从 `benchmarks/templates/` 中最接近的类型模板复制开始。公开、可复用任务放到 `benchmarks/tasks/<task-id>`。私有或本地实验任务放到 `benchmarks/local/<task-id>`。
 
-`task.md` 是任务提示词。按 workflow 应该看到的方式编写，包含问题、预期行为、复现步骤和已知约束。不要写 hidden solution。
+`task.md` 是任务提示词，也是 AI Coding workflow 的标准输入物。按 workflow 应该看到的方式编写，包含问题、预期行为、复现步骤和已知约束。不要写 hidden solution 或 reviewer 专用参考答案。
 
-`acceptance.md` 用于盲审。Reviewer 应该能在不知道产出 workflow 的前提下判断最终 diff 是否可接受。
+`acceptance.md` 是 blind review 阶段的参考答案。Reviewer 应该能在不知道产出 workflow 的前提下判断最终 diff 是否可接受。它可以比 `task.md` 更明确，但仍应描述可接受行为，而不是规定唯一实现路径。
 
 `tests.sh` 是必跑检查入口。它必须可执行、确定性强。优先写能在任务解决前失败的检查；如果缺陷不适合用短脚本复现，也可以写回归保护检查。
 
-`task.json` 是任务契约。它描述目标仓库、预算、复杂度、必跑测试、hidden checks 和评分权重。
+`task.json` 是任务契约。它描述目标仓库、预算、复杂度、必跑测试、hidden checks 和 `scoring_weights`。公开任务必须在 `target.repo` 中使用标准 Git clone URL，并在 `target.base_ref` 中使用完整 commit SHA；本地文件路径只用于 `benchmarks/local/`。
 
 ## 如何选择规模和复杂度
 
@@ -81,6 +81,7 @@ Make it better.
 出现这些情况就应该拒绝或重写：
 
 - 没有固定 `base_ref`
+- `benchmarks/tasks/` 使用只在本机存在的 target repo 路径
 - 依赖 agent 看不到的私有上下文
 - 验收标准完全依赖主观审美
 - 测试无论实现如何都会通过
@@ -103,4 +104,10 @@ pytest
 
 ```bash
 python scripts/validate_task.py benchmarks/templates
+```
+
+显式校验本地实验任务：
+
+```bash
+python scripts/validate_task.py benchmarks/local
 ```

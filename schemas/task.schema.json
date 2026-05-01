@@ -2,8 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AI Coding Evaluation Task",
   "type": "object",
-  "not": { "required": ["difficulty"] },
-  "required": ["id", "type", "effort_size", "complexity", "time_budget_minutes", "scoring"],
+  "not": {
+    "anyOf": [
+      { "required": ["difficulty"] },
+      { "required": ["scoring"] }
+    ]
+  },
+  "required": ["id", "type", "effort_size", "complexity", "time_budget_minutes", "scoring_weights"],
   "properties": {
     "id": { "type": "string" },
     "type": {
@@ -40,11 +45,11 @@
       "properties": {
         "repo": {
           "type": "string",
-          "description": "GitHub repo, remote URL, or local filesystem path."
+          "description": "Cloneable Git URL for public benchmark tasks. Local filesystem paths are reserved for benchmarks/local and templates."
         },
         "base_ref": {
           "type": "string",
-          "description": "Commit SHA, tag, or branch name used as the fixed starting point."
+          "description": "Full commit SHA used as the fixed starting point for public benchmark tasks."
         },
         "language": {
           "type": "string",
@@ -76,7 +81,7 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "scoring": {
+    "scoring_weights": {
       "type": "object",
       "required": [
         "correctness",

@@ -1,0 +1,43 @@
+{
+  "cost_usd": 0,
+  "diff": {
+    "files_changed": 1,
+    "scope_check": "not_configured",
+    "unrelated_files_changed": 0
+  },
+  "duration_minutes": 0.004,
+  "human_interventions": 1,
+  "model": "codex",
+  "process_evidence": {
+    "knowledge_sources_used": [
+      "docs/multi-language-targets.zh-CN.md",
+      "benchmarks/templates/bugfix"
+    ],
+    "plan_followed": true,
+    "project_instructions_read": true,
+    "relevant_docs_read": [
+      "README.zh-CN.md",
+      "docs/multi-language-targets.zh-CN.md"
+    ],
+    "self_review_performed": true,
+    "tools_used": [
+      "go test ./...",
+      "python scripts/validate_task.py",
+      "python scripts/prepare_run.py"
+    ]
+  },
+  "target": {
+    "base_ref": "638f94be75c448179ecf434e103eecc34c531059",
+    "language": "go",
+    "package_manager": "go",
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "worktree": "runs/baseline/go-bugfix-001/demo-001/target",
+    "working_directory": "."
+  },
+  "task_id": "go-bugfix-001",
+  "tests": {
+    "hidden_passed": null,
+    "required_passed": true
+  },
+  "workflow_id": "baseline"
+}
