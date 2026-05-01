@@ -24,26 +24,57 @@ accepted change / human attention minute
 - 任务提示词、验收标准、必跑检查和 hidden review checks
 - 时间、人类介入和成本预算
 - 工作量与复杂度元数据
-- review 和效率评分权重
+- review 和效率的 `scoring_weights`
 
-每个 workflow 从同一个起点运行同一个任务。一次 run 会在 `runs/` 里保留证据：交互记录、diff、测试日志、review 记录和标准化指标。评分器先结合盲审维度和效率，再用 hard gates 限制不安全或未完成工作的最终分。
+每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
+
+`--workflow` 是对比用的分组标签，不是协议文件。可以用 `baseline`、`plan-first`、`tdd` 这类名字聚合 runs。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
 
 ## 快速开始
 
-先在 `benchmarks/tasks/` 下添加一个真实任务，然后创建一次 run 的证据目录：
+先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后准备隔离 target worktree：
 
 ```bash
-python scripts/run_task.py --workflow baseline --task <task-id>
+python scripts/prepare_run.py --workflow baseline --task <task-id>
 ```
 
-给一次 run 评分：
+AI 或人工 workflow 修改准备好的 `runs/.../target` worktree 后，采集测试和 diff 证据：
+
+```bash
+python scripts/execute_run.py \
+  --task benchmarks/tasks/<task-id>/task.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --write
+```
+
+人工 review 时，先初始化待填写的 `score.json`，填完 review 分后再计算最终评分字段：
 
 ```bash
 python scripts/score_run.py \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --init \
+  --write
+
+python scripts/score_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/latest/metrics.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --score runs/baseline/<task-id>/<run-id>/score.json \
   --write
 ```
+
+也可以用 OpenAI-compatible LLM reviewer 自动生成 `score.json`：
+
+```bash
+AI_EVAL_REVIEW_MODEL=<model> \
+AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
+python scripts/llm_review_run.py \
+  --task benchmarks/tasks/<task-id>/task.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --write
+```
+
+如果使用 DeepSeek-compatible review，把 `AI_EVAL_REVIEW_BASE_URL` 设为 `https://api.deepseek.com`，并传入 `--api-key-env DEEPSEEK_API_KEY`。
 
 生成汇总报告：
 
@@ -51,12 +82,7 @@ python scripts/score_run.py \
 python scripts/report.py --runs runs
 ```
 
-验证 benchmark 任务和工具链：
-
-```bash
-python scripts/validate_task.py
-pytest
-```
+完整端到端样例见 [examples/go-bugfix-001](examples/go-bugfix-001)。
 
 ## 贡献评估用例
 
@@ -77,14 +103,26 @@ pytest
 
 PR 流程见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。如何写好用例见 [docs/task-authoring.zh-CN.md](docs/task-authoring.zh-CN.md)。
 
+## 维护与贡献检查
+
+修改 benchmark 任务、模板、schema、脚本或文档时运行：
+
+```bash
+python scripts/validate_task.py
+pytest
+```
+
+这些命令验证评估仓库本身是否健康。它们是维护和贡献门禁，不是单次 workflow run 的评分路径。
+
 ## 仓库结构
 
 ```text
 benchmarks/tasks/       参与运行和报告统计的真实 benchmark 任务
+benchmarks/local/       私有本地实验任务，git 默认忽略
 benchmarks/templates/   可复制的用例编写模板，默认不运行
-workflows/              待比较的 workflow 定义
-runs/                   每个 workflow、每个任务的运行证据
-schemas/                task、workflow、run 文件的 JSON schema
+runs/                   本地运行证据和 target worktree，git 默认忽略
+examples/               可提交的精选任务和运行证据样例
+schemas/                task、run、score 文件的 JSON schema
 scripts/                校验、评分、报告生成的零依赖脚本
 tests/                  评估工具自身的单元测试
 docs/                   评估方法、评分规则和用例编写文档
@@ -129,7 +167,7 @@ test        补齐缺失测试覆盖
 frontend    改进一个 UI 或集成流程
 ```
 
-真实任务放在 `benchmarks/tasks/`。模板保留在 `benchmarks/templates/`，不参与默认运行和报告统计。
+公开可复跑任务放在 `benchmarks/tasks/`，必须使用可 clone 的 Git URL 和完整 commit SHA。私有或本地实验任务放在 `benchmarks/local/`。模板保留在 `benchmarks/templates/`，不参与默认运行和报告统计。
 
 决策置信度：
 

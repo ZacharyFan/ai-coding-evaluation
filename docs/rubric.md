@@ -54,7 +54,7 @@ Use this rubric during blind review. Reviewers should not know which workflow pr
 This is a stability signal, not a substitute for correctness. It captures whether the agent worked in a way that is likely to reproduce on harder tasks.
 
 ```text
-1.0 Used the right project instructions, docs, tools, and review trail
+1.0 Used the right project instructions, docs, tools, and self-review trail
 0.7 Mostly followed the expected workflow, with incomplete evidence
 0.4 Code may be right, but process evidence is weak or accidental
 0.0 Ignored key project instructions, docs, tools, or review requirements

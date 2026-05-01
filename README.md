@@ -24,26 +24,57 @@ Each benchmark task defines:
 - A task prompt, acceptance criteria, required checks, and hidden review checks
 - Budget limits for time, human intervention, and cost
 - Metadata for work size and complexity
-- Scoring weights for review and efficiency
+- A `scoring_weights` object for review and efficiency
 
-Each workflow runs the same task from the same starting point. A run preserves evidence in `runs/`: transcript, diff, test log, review notes, and normalized metrics. The scorer combines blind-review dimensions with efficiency, then applies hard gates for unsafe or incomplete work.
+Each workflow runs the same task from the same starting point. Public tasks point at cloneable target repositories and fixed commit SHAs. A run preserves facts in `run.json` and scoring results in `score.json`, alongside transcript, diff, and test log evidence.
+
+`--workflow` is a comparison label, not a protocol file. Use names such as `baseline`, `plan-first`, or `tdd` to group runs. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
 
 ## Quick Start
 
-After adding a real task under `benchmarks/tasks/`, create a run evidence folder:
+After adding a public reproducible task under `benchmarks/tasks/`, prepare an isolated target worktree:
 
 ```bash
-python scripts/run_task.py --workflow baseline --task <task-id>
+python scripts/prepare_run.py --workflow baseline --task <task-id>
 ```
 
-Score a run:
+Run the AI or human workflow against the prepared `runs/.../target` worktree, then collect test and diff evidence:
+
+```bash
+python scripts/execute_run.py \
+  --task benchmarks/tasks/<task-id>/task.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --write
+```
+
+For manual review, initialize a draft score file, fill `score.json`, then calculate final score fields:
 
 ```bash
 python scripts/score_run.py \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --init \
+  --write
+
+python scripts/score_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/latest/metrics.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --score runs/baseline/<task-id>/<run-id>/score.json \
   --write
 ```
+
+Optionally, use an OpenAI-compatible LLM reviewer to create `score.json`:
+
+```bash
+AI_EVAL_REVIEW_MODEL=<model> \
+AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
+python scripts/llm_review_run.py \
+  --task benchmarks/tasks/<task-id>/task.json \
+  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --write
+```
+
+For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepseek.com` and pass `--api-key-env DEEPSEEK_API_KEY`.
 
 Generate a report:
 
@@ -51,12 +82,7 @@ Generate a report:
 python scripts/report.py --runs runs
 ```
 
-Validate benchmark tasks and tooling:
-
-```bash
-python scripts/validate_task.py
-pytest
-```
+See [examples/go-bugfix-001](examples/go-bugfix-001) for a completed end-to-end run.
 
 ## Contribute A Task
 
@@ -77,14 +103,26 @@ pytest
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for the PR path and [docs/task-authoring.md](docs/task-authoring.md) for how to write a useful evaluation task.
 
+## Repository Health Checks
+
+Use these checks when changing benchmark tasks, templates, schemas, scripts, or docs:
+
+```bash
+python scripts/validate_task.py
+pytest
+```
+
+These commands validate the benchmark repository itself. They are maintenance and contribution gates, not the scoring path for one workflow run.
+
 ## Repository Layout
 
 ```text
 benchmarks/tasks/       Real benchmark tasks that participate in runs and reports
+benchmarks/local/       Private local experiment tasks, ignored by git
 benchmarks/templates/   Copyable task-authoring templates that are not run by default
-workflows/              Workflow definitions to compare
-runs/                   Per-workflow, per-task run evidence
-schemas/                JSON schemas for task, workflow, and run files
+runs/                   Local run evidence and target worktrees, ignored by git
+examples/               Curated example tasks and run evidence
+schemas/                JSON schemas for task, run, and score files
 scripts/                Zero-dependency helpers for validation, scoring, and reports
 tests/                  Unit tests for the evaluation tooling
 docs/                   Evaluation method, rubric, and task-authoring docs
@@ -129,7 +167,7 @@ test        Add missing test coverage
 frontend    Improve a UI or integration flow
 ```
 
-Real tasks belong in `benchmarks/tasks/`. Templates stay in `benchmarks/templates/` and do not participate in default runs or reports.
+Public reproducible tasks belong in `benchmarks/tasks/`. They must use a cloneable Git URL and a full commit SHA. Private or local experiments belong in `benchmarks/local/`. Templates stay in `benchmarks/templates/` and do not participate in default runs or reports.
 
 Decision confidence:
 

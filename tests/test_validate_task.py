@@ -1,10 +1,12 @@
+import json
 from pathlib import Path
-import subprocess
-import sys
 
 import pytest
 
 from scripts.validate_task import expand_task_dirs, validate_task_dir
+
+
+FULL_SHA = "638f94be75c448179ecf434e103eecc34c531059"
 
 
 @pytest.mark.parametrize("template", ["bugfix", "feature", "refactor", "test", "frontend"])
@@ -14,23 +16,11 @@ def test_task_type_templates_are_valid(template):
     assert errors == []
 
 
-def test_default_task_root_can_be_empty():
+def test_default_task_root_discovers_real_tasks_only():
     task_dirs = expand_task_dirs([Path("benchmarks/tasks")])
 
-    assert task_dirs == []
-
-
-def test_run_task_does_not_read_templates_as_tasks():
-    result = subprocess.run(
-        [sys.executable, "scripts/run_task.py", "--workflow", "baseline", "--task", "bugfix"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 1
-    assert "missing task: " in result.stderr
-    assert "benchmarks/tasks/bugfix/task.json" in result.stderr
+    assert Path("benchmarks/tasks/go-bugfix-001") in task_dirs
+    assert all("templates" not in task_dir.parts for task_dir in task_dirs)
 
 
 def test_target_metadata_is_validated(tmp_path):
@@ -58,7 +48,7 @@ def test_target_metadata_is_validated(tmp_path):
     "language": "go",
     "test_commands": []
   },
-  "scoring": {
+  "scoring_weights": {
     "correctness": 35,
     "regression_safety": 15,
     "maintainability": 15,
@@ -78,7 +68,7 @@ def test_target_metadata_is_validated(tmp_path):
 
 
 def write_task(task_dir, task_json):
-    task_dir.mkdir()
+    task_dir.mkdir(parents=True)
     (task_dir / "task.md").write_text("# Task\n", encoding="utf-8")
     (task_dir / "acceptance.md").write_text("# Acceptance\n", encoding="utf-8")
     tests_sh = task_dir / "tests.sh"
@@ -101,11 +91,11 @@ def valid_task_json(**overrides):
         "hidden_checks": [],
         "target": {
             "repo": "../repo",
-            "base_ref": "abc123",
+            "base_ref": FULL_SHA,
             "language": "go",
             "test_commands": ["./tests.sh"],
         },
-        "scoring": {
+        "scoring_weights": {
             "correctness": 35,
             "regression_safety": 15,
             "maintainability": 15,
@@ -116,7 +106,6 @@ def valid_task_json(**overrides):
         },
     }
     task.update(overrides)
-    import json
 
     return json.dumps(task, indent=2)
 
@@ -140,6 +129,51 @@ def test_legacy_difficulty_is_invalid(tmp_path):
     errors = validate_task_dir(task_dir)
 
     assert any("obsolete keys: difficulty" in error for error in errors)
+
+
+def test_legacy_scoring_is_invalid(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["scoring"] = task.pop("scoring_weights")
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("obsolete keys: scoring" in error for error in errors)
+    assert any("missing keys: scoring_weights" in error for error in errors)
+
+
+def test_missing_scoring_weights_is_invalid(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    del task["scoring_weights"]
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("missing keys: scoring_weights" in error for error in errors)
+
+
+def test_missing_scoring_weights_dimension_is_invalid(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    del task["scoring_weights"]["security"]
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("missing scoring_weights keys: security" in error for error in errors)
+
+
+def test_scoring_weights_must_sum_to_100(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["scoring_weights"]["efficiency"] = 9
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("scoring_weights must sum to 100, got 99" in error for error in errors)
 
 
 def test_invalid_complexity_values_are_invalid(tmp_path):
@@ -177,3 +211,63 @@ def test_tests_sh_must_be_executable(tmp_path):
     errors = validate_task_dir(task_dir)
 
     assert any("tests.sh must be executable" in error for error in errors)
+
+
+def test_official_task_rejects_local_target_repo(tmp_path):
+    root = tmp_path / "benchmarks" / "tasks"
+    task_dir = root / "task"
+    write_task(task_dir, valid_task_json())
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("official tasks must use a cloneable Git URL" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "repo",
+    [
+        "https://github.com/owner/repo.git",
+        "https://gitlab.com/group/project.git",
+        "git@github.com:owner/repo.git",
+        "git@gitlab.com:group/project.git",
+    ],
+)
+def test_official_task_accepts_remote_git_url_with_full_sha(tmp_path, repo):
+    root = tmp_path / "benchmarks" / "tasks"
+    task_dir = root / "task"
+    write_task(task_dir, valid_task_json(target={"repo": repo, "base_ref": FULL_SHA, "language": "go", "test_commands": ["./tests.sh"]}))
+
+    errors = validate_task_dir(task_dir)
+
+    assert errors == []
+
+
+@pytest.mark.parametrize("base_ref", ["main", "master", "v1.2.3", "abc123"])
+def test_official_task_rejects_floating_or_short_base_ref(tmp_path, base_ref):
+    root = tmp_path / "benchmarks" / "tasks"
+    task_dir = root / "task"
+    write_task(
+        task_dir,
+        valid_task_json(
+            target={
+                "repo": "https://github.com/owner/repo.git",
+                "base_ref": base_ref,
+                "language": "go",
+                "test_commands": ["./tests.sh"],
+            }
+        ),
+    )
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("official tasks must pin target.base_ref to a full commit SHA" in error for error in errors)
+
+
+def test_local_task_allows_local_target_repo(tmp_path):
+    root = tmp_path / "benchmarks" / "local"
+    task_dir = root / "task"
+    write_task(task_dir, valid_task_json())
+
+    errors = validate_task_dir(task_dir)
+
+    assert errors == []

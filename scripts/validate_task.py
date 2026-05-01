@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,15 +17,15 @@ REQUIRED_TASK_KEYS = {
     "time_budget_minutes",
     "required_tests",
     "hidden_checks",
-    "scoring",
+    "scoring_weights",
 }
 
-OBSOLETE_TASK_KEYS = {"difficulty"}
+OBSOLETE_TASK_KEYS = {"difficulty", "scoring"}
 EFFORT_SIZES = {"small", "medium", "large"}
 BUSINESS_COMPLEXITIES = {"L1_standardized", "L2_linked", "L3_complex"}
 CONTEXT_MATURITIES = {"C1_complete", "C2_partial", "C3_missing"}
 
-REQUIRED_SCORING_KEYS = {
+REQUIRED_SCORING_WEIGHT_KEYS = {
     "correctness",
     "regression_safety",
     "maintainability",
@@ -41,10 +42,32 @@ REQUIRED_TARGET_KEYS = {
     "test_commands",
 }
 
+FULL_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
+GIT_SSH_PATTERN = re.compile(r"^[^@\s]+@[^:\s]+:.+")
+REMOTE_GIT_PREFIXES = ("http://", "https://", "ssh://", "git://")
+
 
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def is_cloneable_git_url(repo: str) -> bool:
+    return repo.startswith(REMOTE_GIT_PREFIXES) or GIT_SSH_PATTERN.match(repo) is not None
+
+
+def is_full_commit_sha(ref: str) -> bool:
+    return FULL_SHA_PATTERN.match(ref) is not None
+
+
+def is_official_task_dir(task_dir: Path) -> bool:
+    parts = task_dir.parts
+    return "benchmarks" in parts and "tasks" in parts
+
+
+def is_template_task_dir(task_dir: Path) -> bool:
+    parts = task_dir.parts
+    return "benchmarks" in parts and "templates" in parts
 
 
 def validate_task_dir(task_dir: Path) -> list[str]:
@@ -95,14 +118,18 @@ def validate_task_dir(task_dir: Path) -> list[str]:
             f"{', '.join(sorted(CONTEXT_MATURITIES))}"
         )
 
-    scoring = task.get("scoring", {})
-    missing_scoring = sorted(REQUIRED_SCORING_KEYS - set(scoring))
-    if missing_scoring:
-        errors.append(f"{task_json}: missing scoring keys: {', '.join(missing_scoring)}")
+    scoring_weights = task.get("scoring_weights", {})
+    if not isinstance(scoring_weights, dict):
+        errors.append(f"{task_json}: scoring_weights must be an object")
+        scoring_weights = {}
 
-    total = sum(float(scoring.get(key, 0)) for key in REQUIRED_SCORING_KEYS)
+    missing_scoring_weights = sorted(REQUIRED_SCORING_WEIGHT_KEYS - set(scoring_weights))
+    if missing_scoring_weights:
+        errors.append(f"{task_json}: missing scoring_weights keys: {', '.join(missing_scoring_weights)}")
+
+    total = sum(float(scoring_weights.get(key, 0)) for key in REQUIRED_SCORING_WEIGHT_KEYS)
     if round(total, 5) != 100:
-        errors.append(f"{task_json}: scoring weights must sum to 100, got {total:g}")
+        errors.append(f"{task_json}: scoring_weights must sum to 100, got {total:g}")
 
     if task.get("id") != task_dir.name:
         errors.append(f"{task_json}: id must match directory name {task_dir.name}")
@@ -112,6 +139,15 @@ def validate_task_dir(task_dir: Path) -> list[str]:
         missing_target = sorted(REQUIRED_TARGET_KEYS - set(target))
         if missing_target:
             errors.append(f"{task_json}: missing target keys: {', '.join(missing_target)}")
+
+        repo = target.get("repo", "")
+        base_ref = target.get("base_ref", "")
+        if is_official_task_dir(task_dir) and not is_template_task_dir(task_dir):
+            if not isinstance(repo, str) or not is_cloneable_git_url(repo):
+                errors.append(f"{task_json}: official tasks must use a cloneable Git URL in target.repo")
+
+            if not isinstance(base_ref, str) or not is_full_commit_sha(base_ref):
+                errors.append(f"{task_json}: official tasks must pin target.base_ref to a full commit SHA")
 
         if not isinstance(target.get("test_commands", []), list) or not target.get("test_commands"):
             errors.append(f"{task_json}: target.test_commands must be a non-empty list")

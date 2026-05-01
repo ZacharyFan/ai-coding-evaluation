@@ -11,8 +11,8 @@
 ```json
 {
   "target": {
-    "repo": "owner/name、远程 URL 或本地路径",
-    "base_ref": "commit-sha-or-tag",
+    "repo": "https://github.com/owner/repo.git",
+    "base_ref": "完整 commit SHA",
     "language": "typescript",
     "package_manager": "pnpm",
     "setup_commands": ["pnpm install"],
@@ -22,7 +22,7 @@
 }
 ```
 
-`base_ref` 很关键。没有固定起始版本，两个工作流的运行结果就不是真正可比较的。
+`base_ref` 很关键。没有固定起始版本，两个工作流的运行结果就不是真正可比较的。`benchmarks/tasks/` 下的公开 benchmark 任务必须使用可 clone 的 Git URL 和完整 commit SHA。本地文件路径只用于 `benchmarks/local/` 实验任务和模板。
 
 ## 示例
 
@@ -31,8 +31,8 @@ Python：
 ```json
 {
   "target": {
-    "repo": "../target-python-app",
-    "base_ref": "9f3c2a1",
+    "repo": "https://github.com/example/target-python-app.git",
+    "base_ref": "9f3c2a1d4b5e6f708192a3b4c5d6e7f8091a2b3c",
     "language": "python",
     "package_manager": "uv",
     "setup_commands": ["uv sync"],
@@ -47,8 +47,8 @@ TypeScript：
 ```json
 {
   "target": {
-    "repo": "../target-web-app",
-    "base_ref": "4b8d10c",
+    "repo": "https://gitlab.com/example/target-web-app.git",
+    "base_ref": "4b8d10c0a1b2c3d4e5f60718293a4b5c6d7e8f90",
     "language": "typescript",
     "package_manager": "pnpm",
     "setup_commands": ["pnpm install --frozen-lockfile"],
@@ -63,8 +63,8 @@ Go：
 ```json
 {
   "target": {
-    "repo": "../target-go-service",
-    "base_ref": "v1.2.3",
+    "repo": "https://github.com/example/target-go-service.git",
+    "base_ref": "638f94be75c448179ecf434e103eecc34c531059",
     "language": "go",
     "package_manager": "go",
     "setup_commands": ["go mod download"],
@@ -79,8 +79,8 @@ Rust：
 ```json
 {
   "target": {
-    "repo": "../target-rust-crate",
-    "base_ref": "main",
+    "repo": "git@gitlab.com:example/target-rust-crate.git",
+    "base_ref": "1234567890abcdef1234567890abcdef12345678",
     "language": "rust",
     "package_manager": "cargo",
     "setup_commands": [],
@@ -92,7 +92,6 @@ Rust：
 
 ## 当前边界
 
-本仓库负责记录和评分 run。目前还不会自动 clone 仓库、安装依赖或执行目标项目测试。
+`prepare_run.py` 会把目标仓库 clone 到隔离的 run worktree，并 checkout 到 `target.base_ref`。`execute_run.py` 随后在这个准备好的 worktree 内执行 setup/test 命令，并记录 `test.log`、`diff.patch` 和机械 run 事实。
 
-现阶段请把精确命令写入 `target.test_commands`。如果任务需要单一可执行入口，也把同样的命令同步到 `tests.sh`。
-
+请把精确命令写入 `target.test_commands`。如果任务需要单一可执行入口，也把同样的命令同步到 `tests.sh`。

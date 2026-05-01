@@ -9,7 +9,7 @@ An evaluation task is a controlled experiment. The goal is to learn which AI cod
 A good task has five properties:
 
 - Real: taken from a real codebase or a faithful extraction of one
-- Fixed: pinned to a target repo and `base_ref`
+- Fixed: pinned to a cloneable target repo and full commit SHA
 - Observable: success can be checked through tests, review, or both
 - Bounded: the expected diff is limited enough to review
 - Fair: every workflow receives the same instructions and starting point
@@ -18,15 +18,15 @@ Weak tasks usually fail one of these tests. The most common failure is a vague t
 
 ## Files To Write
 
-Use the closest template in `benchmarks/templates/` as the starting point, then copy it into `benchmarks/tasks/<task-id>`.
+Use the closest template in `benchmarks/templates/` as the starting point. Copy public, reusable tasks into `benchmarks/tasks/<task-id>`. Copy private or local experiments into `benchmarks/local/<task-id>`.
 
-`task.md` is the prompt. Write it as the workflow should see it. Include the problem, expected behavior, reproduction steps, and known constraints. Do not include the hidden solution.
+`task.md` is the prompt and the standard input to the AI coding workflow. Write it as the workflow should see it. Include the problem, expected behavior, reproduction steps, and known constraints. Do not include the hidden solution or reviewer-only reference answer.
 
-`acceptance.md` is for blind review. It should let a reviewer decide whether the final diff is acceptable without knowing which workflow produced it.
+`acceptance.md` is the blind-review reference answer. It should let a reviewer decide whether the final diff is acceptable without knowing which workflow produced it. It may be more explicit than `task.md`, but it should still describe acceptable behavior rather than mandate one implementation path.
 
 `tests.sh` is the required check entry point. It must be executable and deterministic. Prefer checks that fail before the task is solved, but regression checks are also useful when the defect cannot be safely reproduced in a short script.
 
-`task.json` is the contract. It describes the target repo, budget, complexity, required tests, hidden checks, and scoring weights.
+`task.json` is the contract. It describes the target repo, budget, complexity, required tests, hidden checks, and `scoring_weights`. Public tasks must use a standard Git clone URL in `target.repo` and a full commit SHA in `target.base_ref`; local filesystem paths are only for `benchmarks/local/`.
 
 ## Choosing Size And Complexity
 
@@ -81,6 +81,7 @@ Make it better.
 Reject or rewrite tasks with:
 
 - No fixed `base_ref`
+- `benchmarks/tasks/` uses a local-only target repo path
 - Private context that is not available to the agent
 - Acceptance criteria based only on subjective taste
 - Tests that pass regardless of the implementation
@@ -103,4 +104,10 @@ Templates are validated explicitly with:
 
 ```bash
 python scripts/validate_task.py benchmarks/templates
+```
+
+Local experiments are validated explicitly with:
+
+```bash
+python scripts/validate_task.py benchmarks/local
 ```

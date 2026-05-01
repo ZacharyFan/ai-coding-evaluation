@@ -98,14 +98,18 @@ Each run should preserve:
 transcript.md   AI/user interaction notes or summarized transcript
 diff.patch      final code diff
 test.log        required and optional test output
-review.md       human or agent review
-metrics.json    normalized metrics used for scoring
+run.json        pre-scoring facts and coding-process evidence
+score.json      review scores, hard gates, and final score
 ```
 
-For v0.2, `metrics.json` may also preserve optional diagnostic evidence:
+`prepare_run.py` creates this evidence scaffold and clones the target repo into an isolated run worktree. `execute_run.py` runs target setup/test commands, writes `test.log`, writes `diff.patch`, and updates `run.json`. Human reviewers fill `score.json` directly, or `llm_review_run.py` can ask an OpenAI-compatible LLM to fill the review dimensions. `score_run.py` calculates final score fields.
+
+Extra long-form review notes may be added as custom files in the run directory. They are not part of the standard protocol; structured review notes belong in `score.json.review_notes`.
+
+For v0.2, `run.json` may also preserve optional diagnostic evidence:
 
 ```text
-process_evidence  Docs, tools, knowledge sources, and review trail used by the agent
+process_evidence  Docs, tools, knowledge sources, and self-review trail used during coding
 adoption          AI-generated lines, accepted lines, and adoption rate when available
 context_metrics   Context call, hit, and adoption rates for knowledge/SPEC/skills analysis
 ```

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Coding Evaluation Score",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "workflow_id",
+    "task_id",
+    "review",
+    "review_sources",
+    "review_notes",
+    "manual_hard_gates"
+  ],
+  "properties": {
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "task_id": { "type": "string" },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correctness",
+        "regression_safety",
+        "maintainability",
+        "test_quality",
+        "security",
+        "process_compliance"
+      ],
+      "properties": {
+        "correctness": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "regression_safety": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "maintainability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "test_quality": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "security": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "process_compliance": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "review_sources": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "review_notes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "manual_hard_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "derived_hard_gates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "hard_gates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "task_not_solved",
+          "security_issue",
+          "public_api_break",
+          "required_tests_failed",
+          "unrelated_changes",
+          "hidden_tests_failed"
+        ]
+      }
+    },
+    "raw_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "efficiency": { "type": "number", "minimum": 0, "maximum": 1 },
+    "attention_adjusted_score": { "type": "number", "minimum": 0 }
+  }
+}

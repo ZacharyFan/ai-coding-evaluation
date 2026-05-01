@@ -13,7 +13,7 @@
    ```
 
 2. 把 `task.json` 里的 `id` 改成新目录名。
-3. 用真实代码仓库里的具体任务替换 `task.md`、`acceptance.md` 和 `tests.sh`。
+3. 用公开、可 clone 代码仓库里的具体任务替换 `task.md`、`acceptance.md` 和 `tests.sh`。
 4. 本地验证：
 
    ```bash
@@ -26,7 +26,7 @@
 每个任务目录必须包含：
 
 ```text
-task.json       机器可读元数据、预算、目标仓库、检查项和评分权重
+task.json       机器可读元数据、预算、目标仓库、检查项和 `scoring_weights`
 task.md         展示给 workflow 的任务说明
 acceptance.md   盲审用的人类可读验收标准
 tests.sh        确定性的必跑检查，必须能用 ./tests.sh 执行
@@ -34,7 +34,7 @@ tests.sh        确定性的必跑检查，必须能用 ./tests.sh 执行
 
 如果有助于 reviewer，欢迎补充 `task.zh-CN.md`、`acceptance.zh-CN.md` 等本地化文件。
 
-`benchmarks/tasks/` 是真实 benchmark 集。模板保留在 `benchmarks/templates/`，默认不会被运行。
+`benchmarks/tasks/` 是公开 benchmark 集。模板保留在 `benchmarks/templates/`，默认不会被运行。私有或本地实验任务放在 `benchmarks/local/`，该目录默认被 git 忽略。
 
 ## 命名
 
@@ -80,9 +80,10 @@ context_maturity
 
 ## 验收门槛
 
-好用例应该具备：
+好的公开用例应该具备：
 
-- 固定的目标仓库和 `base_ref`
+- `target.repo` 使用可 clone 的 Git URL
+- `target.base_ref` 使用完整 commit SHA
 - 足够精确的复现步骤或入口点，让另一个人能重跑
 - 必跑检查能在改动前失败，或能保护目标行为
 - hidden checks 描述 reviewer 关注点，但不泄露解法
@@ -96,6 +97,8 @@ context_maturity
 - `python scripts/validate_task.py benchmarks/tasks/<task-id>` 通过
 - `pytest` 通过
 - `tests.sh` 可执行
-- 任务能从目标仓库的干净 checkout 重跑
-- 评分权重仍然合计 100
+- 任务能从公开目标仓库的干净 checkout 重跑
+- `scoring_weights` 仍然合计 100
 - 贡献内容不包含私有代码、凭据、token、日志或客户数据
+
+GitHub、GitLab 和通用 Git remote 都通过标准 clone URL 支持。私有业务仓库适合放在本地实验任务里，但不能作为公开 benchmark 任务的 target。

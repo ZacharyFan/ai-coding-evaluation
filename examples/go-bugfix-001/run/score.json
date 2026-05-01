@@ -1,0 +1,32 @@
+{
+  "attention_adjusted_score": 100.0,
+  "derived_hard_gates": [],
+  "efficiency": 1.0,
+  "hard_gates": [],
+  "manual_hard_gates": [],
+  "raw_score": 100.0,
+  "review": {
+    "correctness": 1,
+    "maintainability": 1,
+    "process_compliance": 1,
+    "regression_safety": 1,
+    "security": 1,
+    "test_quality": 1
+  },
+  "review_notes": {
+    "correctness": "The diff fixes invalid discount percentages while preserving existing behavior.",
+    "maintainability": "The change is local to cart.ApplyDiscount and keeps the public signature unchanged.",
+    "process_compliance": "Task docs, tests, diff, transcript, and self-review evidence are preserved."
+  },
+  "review_sources": {
+    "correctness": "human",
+    "maintainability": "human",
+    "process_compliance": "human",
+    "regression_safety": "human",
+    "security": "human",
+    "test_quality": "human"
+  },
+  "score": 100.0,
+  "task_id": "go-bugfix-001",
+  "workflow_id": "baseline"
+}
