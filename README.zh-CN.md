@@ -28,14 +28,14 @@ accepted change / human attention minute
 
 每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
 
-`--workflow` 是对比用的分组标签，不是协议文件。可以用 `baseline`、`plan-first`、`tdd` 这类名字聚合 runs。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
+`--workflow` 是对比用的分组标签，不是协议文件。可以用任意稳定标签聚合 runs，例如 `baseline`、`codex`、`claude`、`plan-first`、`tdd`。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
 
 ## 快速开始
 
 先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后准备隔离 target worktree：
 
 ```bash
-python scripts/prepare_run.py --workflow baseline --task <task-id>
+python scripts/prepare_run.py --workflow <workflow> --task <task-id>
 ```
 
 AI 或人工 workflow 修改准备好的 `runs/.../target` worktree 后，采集测试和 diff 证据：
@@ -43,7 +43,7 @@ AI 或人工 workflow 修改准备好的 `runs/.../target` worktree 后，采集
 ```bash
 python scripts/execute_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
@@ -51,15 +51,15 @@ python scripts/execute_run.py \
 
 ```bash
 python scripts/score_run.py \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --score runs/<workflow>/<task-id>/<run-id>/score.json \
   --init \
   --write
 
 python scripts/score_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --score runs/<workflow>/<task-id>/<run-id>/score.json \
   --write
 ```
 
@@ -70,7 +70,7 @@ AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
 python scripts/llm_review_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 

@@ -28,14 +28,14 @@ Each benchmark task defines:
 
 Each workflow runs the same task from the same starting point. Public tasks point at cloneable target repositories and fixed commit SHAs. A run preserves facts in `run.json` and scoring results in `score.json`, alongside transcript, diff, and test log evidence.
 
-`--workflow` is a comparison label, not a protocol file. Use names such as `baseline`, `plan-first`, or `tdd` to group runs. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
+`--workflow` is a comparison label, not a protocol file. Use any stable label such as `baseline`, `codex`, `claude`, `plan-first`, or `tdd` to group runs. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
 
 ## Quick Start
 
 After adding a public reproducible task under `benchmarks/tasks/`, prepare an isolated target worktree:
 
 ```bash
-python scripts/prepare_run.py --workflow baseline --task <task-id>
+python scripts/prepare_run.py --workflow <workflow> --task <task-id>
 ```
 
 Run the AI or human workflow against the prepared `runs/.../target` worktree, then collect test and diff evidence:
@@ -43,7 +43,7 @@ Run the AI or human workflow against the prepared `runs/.../target` worktree, th
 ```bash
 python scripts/execute_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
@@ -51,15 +51,15 @@ For manual review, initialize a draft score file, fill `score.json`, then calcul
 
 ```bash
 python scripts/score_run.py \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --score runs/<workflow>/<task-id>/<run-id>/score.json \
   --init \
   --write
 
 python scripts/score_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --score runs/<workflow>/<task-id>/<run-id>/score.json \
   --write
 ```
 
@@ -70,7 +70,7 @@ AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
 python scripts/llm_review_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
