@@ -2,35 +2,27 @@
 from __future__ import annotations
 
 import argparse
-import json
+import sys
 from pathlib import Path
-from statistics import mean
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-def load_json(path: Path) -> dict[str, Any]:
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def collect_runs(root: Path) -> list[dict[str, Any]]:
-    runs = []
-    for path in sorted(root.glob("*/*/*/run.json")):
-        if path.parent.name == "latest":
-            continue
-        data = load_json(path)
-        score_path = path.parent / "score.json"
-        if score_path.exists():
-            data.update(load_json(score_path))
-        data["_path"] = str(score_path if score_path.exists() else path)
-        runs.append(data)
-    return runs
+from scripts.report_data import collect_runs, group_by, is_scored, summarize_runs
 
 
 def fmt(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.2f}"
     return str(value)
+
+
+def fmt_summary(value: Any) -> str:
+    if isinstance(value, (int, float)):
+        return f"{value:.2f}"
+    return "unscored"
 
 
 def print_runs(runs: list[dict[str, Any]]) -> None:
@@ -56,27 +48,19 @@ def print_runs(runs: list[dict[str, Any]]) -> None:
 
 
 def print_summary(runs: list[dict[str, Any]]) -> None:
-    by_workflow: dict[str, list[dict[str, Any]]] = {}
-    for run in runs:
-        by_workflow.setdefault(run.get("workflow_id", ""), []).append(run)
-
     print("\n| Workflow | Runs | Avg Score | Avg Attention Score | First Pass Rate |")
     print("| --- | ---: | ---: | ---: | ---: |")
-    for workflow, items in sorted(by_workflow.items()):
-        scored = [item for item in items if isinstance(item.get("score"), (int, float))]
+    for workflow, items in sorted(group_by(runs, "workflow_id").items()):
+        scored = [item for item in items if is_scored(item)]
+        summary = summarize_runs(items)
         if not scored:
             print(f"| {workflow} | {len(items)} | unscored | unscored | unscored |")
             continue
-        first_pass = [
-            item
-            for item in scored
-            if item.get("tests", {}).get("required_passed") is True and not item.get("hard_gates")
-        ]
         print(
             f"| {workflow} | {len(items)} | "
-            f"{mean(item['score'] for item in scored):.2f} | "
-            f"{mean(item.get('attention_adjusted_score', 0) for item in scored):.2f} | "
-            f"{len(first_pass) / len(scored):.2f} |"
+            f"{fmt_summary(summary['avg_score'])} | "
+            f"{fmt_summary(summary['avg_attention_score'])} | "
+            f"{fmt_summary(summary['first_pass_rate'])} |"
         )
 
 

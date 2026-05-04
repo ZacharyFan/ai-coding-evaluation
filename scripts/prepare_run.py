@@ -53,7 +53,7 @@ def validate_workflow_id(workflow_id: str) -> str:
     return workflow_id
 
 
-def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path) -> dict[str, Any]:
+def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path, model: str | None = None) -> dict[str, Any]:
     target = task.get("target", {})
     return {
         "workflow_id": workflow_id,
@@ -66,7 +66,7 @@ def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path) -> dic
             "package_manager": target.get("package_manager", ""),
             "working_directory": target.get("working_directory", "."),
         },
-        "model": None,
+        "model": model,
         "duration_minutes": 0,
         "human_interventions": 0,
         "cost_usd": None,
@@ -124,7 +124,7 @@ def copy_coding_task_files(task_dir: Path, run_dir: Path) -> None:
             (run_dir / filename).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
 
 
-def prepare_run(root: Path, workflow_id: str, task_id: str, run_id: str | None = None) -> Path:
+def prepare_run(root: Path, workflow_id: str, task_id: str, run_id: str | None = None, model: str | None = None) -> Path:
     workflow_id = validate_workflow_id(workflow_id)
     run_id = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     task_path = root / "benchmarks" / "tasks" / task_id / "task.json"
@@ -153,7 +153,7 @@ def prepare_run(root: Path, workflow_id: str, task_id: str, run_id: str | None =
     ensure_success(checkout, f"failed to checkout {target['base_ref']}")
 
     copy_coding_task_files(task_dir, run_dir)
-    write_json(run_dir / "run.json", initial_run(workflow_id, task, target_dir))
+    write_json(run_dir / "run.json", initial_run(workflow_id, task, target_dir, model))
     (run_dir / "transcript.md").write_text(
         transcript_template(workflow_id, task["id"], run_id, target_dir),
         encoding="utf-8",
@@ -169,12 +169,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd")
     parser.add_argument("--task", required=True, help="Task id, matching benchmarks/tasks/{id}")
     parser.add_argument("--run-id", default=None, help="Run id. Defaults to UTC timestamp.")
+    parser.add_argument("--model", default=None, help="Model id used by this run, such as gpt-5.5 or claude-sonnet-4.5")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    run_dir = prepare_run(ROOT, args.workflow, args.task, args.run_id)
+    run_dir = prepare_run(ROOT, args.workflow, args.task, args.run_id, args.model)
     print(run_dir)
     print()
     print("Prepared target worktree:")
