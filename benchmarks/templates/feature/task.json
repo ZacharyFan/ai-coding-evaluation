@@ -12,6 +12,7 @@
   "target": {
     "repo": "replace-with-public-git-url-or-local-path-for-benchmarks-local",
     "base_ref": "replace-with-full-commit-sha",
+    "solution_ref": "optional-reference-solution-sha",
     "language": "replace-with-language",
     "package_manager": "replace-with-package-manager",
     "setup_commands": [],
@@ -24,6 +25,11 @@
     "Edge cases are handled explicitly.",
     "Existing API and UX contracts are preserved."
   ],
+  "scope": {
+    "allowed_paths": [
+      "replace-with-target-path/**"
+    ]
+  },
   "scoring_weights": {
     "correctness": 35,
     "regression_safety": 15,

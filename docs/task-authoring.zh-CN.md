@@ -26,7 +26,19 @@
 
 `tests.sh` 是必跑检查入口。它必须可执行、确定性强。优先写能在任务解决前失败的检查；如果缺陷不适合用短脚本复现，也可以写回归保护检查。
 
-`task.json` 是任务契约。它描述目标仓库、预算、复杂度、必跑测试、hidden checks 和 `scoring_weights`。公开任务必须在 `target.repo` 中使用标准 Git clone URL，并在 `target.base_ref` 中使用完整 commit SHA；本地文件路径只用于 `benchmarks/local/`。
+`task.json` 是任务契约。它描述目标仓库、预算、复杂度、允许修改范围、必跑测试、hidden checks 和 `scoring_weights`。公开任务必须在 `target.repo` 中使用标准 Git clone URL，并在 `target.base_ref` 中使用完整 commit SHA；本地文件路径只用于 `benchmarks/local/`。
+
+`target.solution_ref` 是可选的参考 metadata。有已知正确参考实现 commit 时可以填写。它不是唯一正确答案，工具链也不会 checkout、diff 或根据它评分。
+
+用 `scope.allowed_paths` 定义最终 diff 允许修改哪些文件。它是 repo-relative allowlist，支持 glob：
+
+```json
+"scope": {
+  "allowed_paths": ["cart/**", "go.mod", "go.sum"]
+}
+```
+
+如果省略 `scope`，`execute_run.py` 会记录 `scope_check=not_configured`，并把无关文件状态留为未知。如果某个 changed file 不匹配 allowlist，`score_run.py` 会派生 `unrelated_changes` hard gate。
 
 ## 如何选择规模和复杂度
 

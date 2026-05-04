@@ -26,6 +26,11 @@ REVIEW_DIMENSIONS = (
 )
 
 
+def review_hint() -> str:
+    fields = " ".join(f"{dimension}=<0-1>" for dimension in REVIEW_DIMENSIONS)
+    return f"Use --set-review {fields} --write, or run scripts/llm_review_run.py to generate review scores first."
+
+
 def init_score_doc(run: dict[str, Any]) -> dict[str, Any]:
     return {
         "workflow_id": run.get("workflow_id", ""),
@@ -34,8 +39,6 @@ def init_score_doc(run: dict[str, Any]) -> dict[str, Any]:
         "review_sources": {dimension: "manual_pending" for dimension in REVIEW_DIMENSIONS},
         "review_notes": {},
         "manual_hard_gates": [],
-        "derived_hard_gates": [],
-        "hard_gates": [],
     }
 
 
@@ -54,6 +57,46 @@ def write_initialized_score(path: Path, run: dict[str, Any]) -> dict[str, Any]:
     score = init_score_doc(run)
     write_json(path, score)
     return score
+
+
+def parse_review_assignment(value: str) -> tuple[str, float]:
+    if "=" not in value:
+        raise ValueError(f"review assignment must use dimension=value: {value}")
+    key, raw_score = value.split("=", 1)
+    key = key.strip()
+    if key not in REVIEW_DIMENSIONS:
+        allowed = ", ".join(REVIEW_DIMENSIONS)
+        raise ValueError(f"unknown review dimension: {key}. Allowed dimensions: {allowed}")
+    try:
+        score = float(raw_score)
+    except ValueError as error:
+        raise ValueError(f"review.{key} must be a number between 0 and 1") from error
+    if score < 0 or score > 1:
+        raise ValueError(f"review.{key} must be between 0 and 1")
+    return key, score
+
+
+def apply_manual_review(score: dict[str, Any], assignments: list[str], hard_gates: list[str] | None) -> dict[str, Any]:
+    updated = dict(score)
+    updated["review"] = dict(updated.get("review", {}))
+    updated["review_sources"] = dict(updated.get("review_sources", {}))
+    updated.setdefault("review_notes", {})
+
+    for assignment in assignments:
+        key, value = parse_review_assignment(assignment)
+        updated["review"][key] = value
+        updated["review_sources"][key] = "manual"
+
+    if hard_gates is not None:
+        unknown = sorted(set(hard_gates) - set(DEFAULT_GATE_CAPS))
+        if unknown:
+            allowed = ", ".join(sorted(DEFAULT_GATE_CAPS))
+            raise ValueError(f"unknown manual hard gate: {unknown[0]}. Allowed gates: {allowed}")
+        updated["manual_hard_gates"] = sorted(set(hard_gates))
+    else:
+        updated.setdefault("manual_hard_gates", [])
+
+    return updated
 
 
 def clamp_unit(value: float) -> float:
@@ -92,7 +135,8 @@ def derived_gates(run: dict[str, Any], score: dict[str, Any]) -> set[str]:
         gates.add("required_tests_failed")
     if tests.get("hidden_passed") is False:
         gates.add("hidden_tests_failed")
-    if diff.get("unrelated_files_changed", 0) > 0:
+    unrelated = diff.get("unrelated_files_changed", 0)
+    if unrelated is not None and unrelated > 0:
         gates.add("unrelated_changes")
     if review.get("correctness", 1.0) <= 0:
         gates.add("task_not_solved")
@@ -131,9 +175,13 @@ def apply_hard_gates(score: float, gates: set[str]) -> float:
 
 
 def score_run(task: dict[str, Any], run: dict[str, Any], score: dict[str, Any]) -> dict[str, Any]:
-    for key in REVIEW_DIMENSIONS:
-        if key not in score.get("review", {}) or score["review"][key] is None:
-            raise ValueError(f"review.{key} must be filled before scoring")
+    missing = [key for key in REVIEW_DIMENSIONS if key not in score.get("review", {}) or score["review"][key] is None]
+    if missing:
+        raise ValueError(
+            f"review.{missing[0]} must be filled before scoring; "
+            f"missing review fields: {', '.join(missing)}. "
+            f"{review_hint()}"
+        )
     derived = derived_gates(run, score)
     manual = set(score.get("manual_hard_gates", []))
     gates = manual | derived
@@ -158,6 +206,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run", type=Path, help="Path to run.json. Defaults to score.json sibling run.json.")
     parser.add_argument("--score", required=True, type=Path, help="Path to score.json")
     parser.add_argument("--init", action="store_true", help="Create a manual scoring draft score.json")
+    parser.add_argument(
+        "--set-review",
+        nargs="+",
+        metavar="DIMENSION=VALUE",
+        help="Set manual review scores, for example correctness=1.0 maintainability=0.8",
+    )
+    parser.add_argument(
+        "--manual-hard-gate",
+        action="append",
+        dest="manual_hard_gates",
+        help="Add a manual hard gate such as public_api_break. Repeat for multiple gates.",
+    )
     parser.add_argument("--write", action="store_true", help="Write score fields back to score.json")
     return parser.parse_args()
 
@@ -175,10 +235,12 @@ def main() -> None:
         return
 
     if args.task is None:
-        raise SystemExit("--task is required unless --init is used")
+        raise SystemExit("--task is required unless --init is used. " + review_hint())
 
     task = load_json(args.task)
-    score = load_json(args.score)
+    score = load_json(args.score) if args.score.exists() else init_score_doc(run)
+    if args.set_review or args.manual_hard_gates is not None:
+        score = apply_manual_review(score, args.set_review or [], args.manual_hard_gates)
     result = score_run(task, run, score)
 
     if args.write:

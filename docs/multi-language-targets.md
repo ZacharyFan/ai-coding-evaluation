@@ -13,6 +13,7 @@ Each `task.json` can include:
   "target": {
     "repo": "https://github.com/owner/repo.git",
     "base_ref": "full-commit-sha",
+    "solution_ref": "optional-reference-solution-sha",
     "language": "typescript",
     "package_manager": "pnpm",
     "setup_commands": ["pnpm install"],
@@ -23,6 +24,8 @@ Each `task.json` can include:
 ```
 
 `base_ref` matters. Without a fixed starting revision, two workflow runs are not really comparable. Public benchmark tasks under `benchmarks/tasks/` must use a cloneable Git URL and a full commit SHA. Local filesystem paths are reserved for `benchmarks/local/` experiments and templates.
+
+`solution_ref` is optional and informational. It can point to a reference implementation commit for reviewers, but it is not the only valid solution and is not used by `prepare_run.py`, `execute_run.py`, `score_run.py`, or reports.
 
 ## Examples
 

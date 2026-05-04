@@ -26,7 +26,19 @@ Use the closest template in `benchmarks/templates/` as the starting point. Copy 
 
 `tests.sh` is the required check entry point. It must be executable and deterministic. Prefer checks that fail before the task is solved, but regression checks are also useful when the defect cannot be safely reproduced in a short script.
 
-`task.json` is the contract. It describes the target repo, budget, complexity, required tests, hidden checks, and `scoring_weights`. Public tasks must use a standard Git clone URL in `target.repo` and a full commit SHA in `target.base_ref`; local filesystem paths are only for `benchmarks/local/`.
+`task.json` is the contract. It describes the target repo, budget, complexity, allowed file scope, required tests, hidden checks, and `scoring_weights`. Public tasks must use a standard Git clone URL in `target.repo` and a full commit SHA in `target.base_ref`; local filesystem paths are only for `benchmarks/local/`.
+
+`target.solution_ref` is optional reference-only metadata. Use it for a known-good reference implementation commit when one exists. It is not the only acceptable solution, and the tooling does not checkout, diff, or score against it.
+
+Use `scope.allowed_paths` to define where the final diff is allowed to change files. It is a repo-relative allowlist with glob support:
+
+```json
+"scope": {
+  "allowed_paths": ["cart/**", "go.mod", "go.sum"]
+}
+```
+
+If `scope` is omitted, `execute_run.py` records `scope_check=not_configured` and leaves unrelated-file status unknown. If a changed file does not match the allowlist, `score_run.py` derives the `unrelated_changes` hard gate.
 
 ## Choosing Size And Complexity
 

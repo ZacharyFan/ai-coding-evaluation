@@ -20,57 +20,75 @@ accepted change / human attention minute
 
 每个 benchmark task 会定义：
 
-- 固定的目标仓库和 `base_ref`
+- 固定的目标仓库、`base_ref` 和可选的参考用 `solution_ref`
 - 任务提示词、验收标准、必跑检查和 hidden review checks
 - 时间、人类介入和成本预算
 - 工作量与复杂度元数据
 - review 和效率的 `scoring_weights`
 
-每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
+每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。可选的 `target.solution_ref` 是给作者和 reviewer 参考的官方参考实现；它不是唯一正确答案，也不会被工具链使用。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
 
-`--workflow` 是对比用的分组标签，不是协议文件。可以用 `baseline`、`plan-first`、`tdd` 这类名字聚合 runs。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
+`--workflow` 是对比用的分组标签，不是协议文件。可以用任意稳定标签聚合 runs，例如 `baseline`、`codex`、`claude`、`plan-first`、`tdd`。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
 
 ## 快速开始
 
 先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后准备隔离 target worktree：
 
 ```bash
-python scripts/prepare_run.py --workflow baseline --task <task-id>
+python scripts/prepare_run.py --workflow <workflow> --task <task-id>
 ```
 
-AI 或人工 workflow 修改准备好的 `runs/.../target` worktree 后，采集测试和 diff 证据：
+AI 或人工 workflow 修改准备好的 `runs/.../target` worktree。Coding prompt 使用 `runs/<workflow>/<task-id>/<run-id>/task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
+
+如果要用 Claude Code 或 Codex hook 自动采集过程证据，先导出 `prepare_run.py` 打印的 `AI_EVAL_*` 变量，再从 `runs/.../target` 启动 agent。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+
+coding 完成后，采集测试和 diff 证据：
 
 ```bash
 python scripts/execute_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
-人工 review 时，先初始化待填写的 `score.json`，填完 review 分后再计算最终评分字段：
+可选 review 辅助：如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff。这个 helper 会在存在 `task.scope.allowed_paths` 时只展示任务允许范围内的差异，输出带文件标题和行号的 reviewer-friendly diff view，并用红色背景标记候选侧行、绿色背景标记参考侧行。它只给 reviewer 提供上下文，不能按“和参考解相似度”打分。
+
+```bash
+python scripts/show_solution_diff.py \
+  --task benchmarks/tasks/<task-id>/task.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --color auto
+```
+
+正式计算分数前，先二选一完成 review。
+
+人工路径：直接传入六个 review 分数。这会创建或更新 `score.json`，并一次性计算最终分。每个 review 值必须在 `0.0` 到 `1.0` 之间。除非 reviewer 明确要压分，否则不要传 `--manual-hard-gate`：
 
 ```bash
 python scripts/score_run.py \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
-  --init \
-  --write
-
-python scripts/score_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
-  --score runs/baseline/<task-id>/<run-id>/score.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --score runs/<workflow>/<task-id>/<run-id>/score.json \
+  --set-review \
+    correctness=1.0 \
+    regression_safety=1.0 \
+    maintainability=0.8 \
+    test_quality=0.8 \
+    security=1.0 \
+    process_compliance=0.6 \
   --write
 ```
 
-也可以用 OpenAI-compatible LLM reviewer 自动生成 `score.json`：
+如果需要人工 hard gate，追加 `--manual-hard-gate public_api_break`。`score_run.py --init` 仍然保留给偏好手动编辑 draft JSON 的 reviewer。
+
+LLM 路径：用 OpenAI-compatible reviewer 自动生成 `score.json` 并一次性计算最终分：
 
 ```bash
 AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
 python scripts/llm_review_run.py \
   --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/baseline/<task-id>/<run-id>/run.json \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
@@ -92,7 +110,7 @@ python scripts/report.py --runs runs
 cp -R benchmarks/templates/bugfix benchmarks/tasks/bugfix-002
 ```
 
-然后修改 `task.json`、`task.md`、`acceptance.md` 和 `tests.sh`。
+然后修改 `task.json`，尤其是 `target`、可选的 `target.solution_ref` 和 `scope.allowed_paths`，以及 `task.md`、`acceptance.md` 和 `tests.sh`。
 
 开 PR 前运行：
 
@@ -122,6 +140,7 @@ benchmarks/local/       私有本地实验任务，git 默认忽略
 benchmarks/templates/   可复制的用例编写模板，默认不运行
 runs/                   本地运行证据和 target worktree，git 默认忽略
 examples/               可提交的精选任务和运行证据样例
+integrations/           可选的 Claude Code 和 Codex hook 模板
 schemas/                task、run、score 文件的 JSON schema
 scripts/                校验、评分、报告生成的零依赖脚本
 tests/                  评估工具自身的单元测试

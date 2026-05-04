@@ -11,19 +11,29 @@
   "max_cost_usd": 1.0,
   "target": {
     "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
-    "base_ref": "638f94be75c448179ecf434e103eecc34c531059",
+    "base_ref": "c9d8066db892dcf09be9120516c7c5adeacf57f6",
+    "solution_ref": "1401af0e545c6838c46cebfb1e2a616b79be1f83",
     "language": "go",
     "package_manager": "go",
     "setup_commands": [],
-    "test_commands": ["go test ./..."],
+    "test_commands": [
+      "go test ./..."
+    ],
     "working_directory": "."
   },
-  "required_tests": ["./tests.sh"],
+  "required_tests": [
+    "./tests.sh"
+  ],
   "hidden_checks": [
     "Discount percent validation rejects values below 0 and above 100.",
     "Valid discounts and negative total validation keep their existing behavior.",
     "The fix is implemented in the cart package without test-specific branching."
   ],
+  "scope": {
+    "allowed_paths": [
+      "cart/**"
+    ]
+  },
   "scoring_weights": {
     "correctness": 35,
     "regression_safety": 15,

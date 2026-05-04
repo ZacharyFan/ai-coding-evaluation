@@ -1,0 +1,96 @@
+{
+  "hooks": {
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

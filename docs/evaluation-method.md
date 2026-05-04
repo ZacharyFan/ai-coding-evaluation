@@ -95,14 +95,18 @@ Hard gates clamp the final score after the weighted score is calculated.
 Each run should preserve:
 
 ```text
+task.md         coding prompt snapshot used for this run
 transcript.md   AI/user interaction notes or summarized transcript
+events.jsonl    optional redacted hook events from Claude Code or Codex
 diff.patch      final code diff
 test.log        required and optional test output
 run.json        pre-scoring facts and coding-process evidence
 score.json      review scores, hard gates, and final score
 ```
 
-`prepare_run.py` creates this evidence scaffold and clones the target repo into an isolated run worktree. `execute_run.py` runs target setup/test commands, writes `test.log`, writes `diff.patch`, and updates `run.json`. Human reviewers fill `score.json` directly, or `llm_review_run.py` can ask an OpenAI-compatible LLM to fill the review dimensions. `score_run.py` calculates final score fields.
+`prepare_run.py` creates this evidence scaffold, copies the coding task prompt into the run directory, and clones the target repo into an isolated run worktree. `acceptance.md` is not copied because it is reviewer-only. `execute_run.py` runs target setup/test commands, writes `test.log`, writes `diff.patch`, and updates `run.json`. Optional hooks can append process events to `events.jsonl`; `summarize_run_events.py` derives process evidence from those events. Human reviewers pass `review.*` scores through `score_run.py --set-review`, or `llm_review_run.py` can ask an OpenAI-compatible LLM to fill the review dimensions. `score_run.py` calculates final score fields and writes `derived_hard_gates` plus the final merged `hard_gates`.
+
+When `task.json` defines `scope.allowed_paths`, `execute_run.py` compares changed tracked files plus untracked files against that allowlist and writes `run.json.diff.scope_check=path_allowlist`, `unrelated_files_changed`, and `unrelated_files`. Without `scope`, unrelated-file status is unknown rather than assumed clean.
 
 Extra long-form review notes may be added as custom files in the run directory. They are not part of the standard protocol; structured review notes belong in `score.json.review_notes`.
 

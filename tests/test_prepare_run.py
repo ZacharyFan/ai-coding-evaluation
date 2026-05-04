@@ -43,6 +43,10 @@ def init_remote_repo(tmp_path: Path) -> tuple[Path, str]:
 def write_task(root: Path, repo: Path, base_ref: str) -> None:
     task_dir = root / "benchmarks" / "tasks" / "example-task"
     task_dir.mkdir(parents=True)
+    (task_dir / "task.md").write_text("# Task\nUse the target worktree.\n", encoding="utf-8")
+    (task_dir / "task.zh-CN.md").write_text("# 任务\n使用 target worktree。\n", encoding="utf-8")
+    (task_dir / "acceptance.md").write_text("# Acceptance\nReviewer-only.\n", encoding="utf-8")
+    (task_dir / "acceptance.zh-CN.md").write_text("# 验收\n仅供 reviewer 使用。\n", encoding="utf-8")
     write_json(
         task_dir / "task.json",
         {
@@ -78,8 +82,26 @@ def test_prepare_run_clones_target_and_writes_run_json(tmp_path):
     assert run["target"]["repo"] == str(remote)
     assert run["target"]["base_ref"] == base_ref
     assert run["target"]["worktree"] == str(target)
+    assert run["model"] is None
+    assert run["cost_usd"] is None
     assert run["tests"]["hidden_passed"] is None
     assert run["process_evidence"]["self_review_performed"] is False
+    assert run["adoption"] == {
+        "ai_generated_lines": None,
+        "accepted_lines": None,
+        "adoption_rate": None,
+    }
+    assert run["context_metrics"] == {
+        "call_rate": None,
+        "hit_rate": None,
+        "adoption_rate": None,
+    }
+    assert (run_dir / "task.md").read_text(encoding="utf-8") == "# Task\nUse the target worktree.\n"
+    assert (run_dir / "task.zh-CN.md").read_text(encoding="utf-8") == "# 任务\n使用 target worktree。\n"
+    assert not (run_dir / "coding-prompt.md").exists()
+    assert not (run_dir / "acceptance.md").exists()
+    assert not (run_dir / "acceptance.zh-CN.md").exists()
+    assert (run_dir / "events.jsonl").exists()
     assert "review" not in run
     assert "score" not in run
     assert not (run_dir / "review.md").exists()

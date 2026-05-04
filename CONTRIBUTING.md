@@ -84,6 +84,7 @@ A good public task has:
 
 - A cloneable Git URL in `target.repo`
 - A full commit SHA in `target.base_ref`
+- Optional `target.solution_ref` pinned to a full commit SHA when a reference implementation exists
 - Reproduction or entry point precise enough for another person to rerun
 - Required checks that fail before the change or protect the desired behavior
 - Hidden checks that describe reviewer concerns without leaking the solution

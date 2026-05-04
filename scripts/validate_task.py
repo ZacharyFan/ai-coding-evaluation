@@ -60,6 +60,17 @@ def is_full_commit_sha(ref: str) -> bool:
     return FULL_SHA_PATTERN.match(ref) is not None
 
 
+def is_repo_relative_scope_path(path: str) -> bool:
+    normalized = path.replace("\\", "/")
+    return not (
+        normalized.startswith("/")
+        or normalized == ".."
+        or normalized.startswith("../")
+        or "/../" in normalized
+        or normalized.endswith("/..")
+    )
+
+
 def is_official_task_dir(task_dir: Path) -> bool:
     parts = task_dir.parts
     return "benchmarks" in parts and "tasks" in parts
@@ -134,6 +145,23 @@ def validate_task_dir(task_dir: Path) -> list[str]:
     if task.get("id") != task_dir.name:
         errors.append(f"{task_json}: id must match directory name {task_dir.name}")
 
+    scope = task.get("scope")
+    if scope is not None:
+        if not isinstance(scope, dict):
+            errors.append(f"{task_json}: scope must be an object")
+            scope = {}
+
+        allowed_paths = scope.get("allowed_paths")
+        if not isinstance(allowed_paths, list) or not allowed_paths:
+            errors.append(f"{task_json}: scope.allowed_paths must be a non-empty list")
+            allowed_paths = []
+
+        if not all(isinstance(path, str) and path.strip() for path in allowed_paths):
+            errors.append(f"{task_json}: scope.allowed_paths must contain only non-empty strings")
+
+        if any(isinstance(path, str) and not is_repo_relative_scope_path(path) for path in allowed_paths):
+            errors.append(f"{task_json}: scope.allowed_paths must be repo-relative paths")
+
     target = task.get("target")
     if target is not None:
         missing_target = sorted(REQUIRED_TARGET_KEYS - set(target))
@@ -142,12 +170,18 @@ def validate_task_dir(task_dir: Path) -> list[str]:
 
         repo = target.get("repo", "")
         base_ref = target.get("base_ref", "")
+        solution_ref = target.get("solution_ref")
         if is_official_task_dir(task_dir) and not is_template_task_dir(task_dir):
             if not isinstance(repo, str) or not is_cloneable_git_url(repo):
                 errors.append(f"{task_json}: official tasks must use a cloneable Git URL in target.repo")
 
             if not isinstance(base_ref, str) or not is_full_commit_sha(base_ref):
                 errors.append(f"{task_json}: official tasks must pin target.base_ref to a full commit SHA")
+
+            if solution_ref is not None and (not isinstance(solution_ref, str) or not is_full_commit_sha(solution_ref)):
+                errors.append(
+                    f"{task_json}: official tasks must pin target.solution_ref to a full commit SHA when present"
+                )
 
         if not isinstance(target.get("test_commands", []), list) or not target.get("test_commands"):
             errors.append(f"{task_json}: target.test_commands must be a non-empty list")
