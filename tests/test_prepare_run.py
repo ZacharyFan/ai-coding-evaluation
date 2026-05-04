@@ -118,6 +118,17 @@ def test_prepare_run_fails_when_run_directory_exists(tmp_path):
         prepare_run(root, "baseline", "example-task", "demo-001")
 
 
+def test_prepare_run_writes_optional_model_to_run_json(tmp_path):
+    remote, base_ref = init_remote_repo(tmp_path)
+    root = tmp_path / "evaluation"
+    write_task(root, remote, base_ref)
+
+    run_dir = prepare_run(root, "baseline", "example-task", "demo-001", model="gpt-5.5")
+    run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+
+    assert run["model"] == "gpt-5.5"
+
+
 @pytest.mark.parametrize("workflow_id", ["", "../x", "a/b", "bad id", "..", "a..b"])
 def test_prepare_run_rejects_unsafe_workflow_ids(tmp_path, workflow_id):
     root = tmp_path / "evaluation"

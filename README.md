@@ -28,14 +28,14 @@ Each benchmark task defines:
 
 Each workflow runs the same task from the same starting point. Public tasks point at cloneable target repositories and fixed commit SHAs. Optional `target.solution_ref` values are reference implementations for authors and reviewers; they are not the only acceptable solution and are not used by the tooling. A run preserves facts in `run.json` and scoring results in `score.json`, alongside transcript, diff, and test log evidence.
 
-`--workflow` is a comparison label, not a protocol file. Use any stable label such as `baseline`, `codex`, `claude`, `plan-first`, or `tdd` to group runs. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
+`--workflow` is a comparison label, not a protocol file. Use it for process labels such as `baseline`, `plan-first`, or `tdd`. Use `run.json.model` for model identity such as `gpt-5.5` or `claude-sonnet-4.5`; do not mix model names into `workflow_id`. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
 
 ## Quick Start
 
 After adding a public reproducible task under `benchmarks/tasks/`, prepare an isolated target worktree:
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id>
+python scripts/prepare_run.py --workflow <workflow> --task <task-id> --model <model>
 ```
 
 Run the AI or human workflow against the prepared `runs/.../target` worktree. Use `runs/<workflow>/<task-id>/<run-id>/task.md` as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
@@ -94,11 +94,19 @@ python scripts/llm_review_run.py \
 
 For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepseek.com` and pass `--api-key-env DEEPSEEK_API_KEY`.
 
-Generate a report:
+Generate a terminal report:
 
 ```bash
 python scripts/report.py --runs runs
 ```
+
+Generate a static comparison dashboard:
+
+```bash
+python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+```
+
+`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, and per-task results. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
 
 See [examples/go-bugfix-001](examples/go-bugfix-001) for a completed end-to-end run.
 
@@ -139,6 +147,7 @@ benchmarks/tasks/       Real benchmark tasks that participate in runs and report
 benchmarks/local/       Private local experiment tasks, ignored by git
 benchmarks/templates/   Copyable task-authoring templates that are not run by default
 runs/                   Local run evidence and target worktrees, ignored by git
+reports/                Local generated dashboards and reports, ignored by git
 examples/               Curated example tasks and run evidence
 integrations/           Optional Claude Code and Codex hook templates
 schemas/                JSON schemas for task, run, and score files

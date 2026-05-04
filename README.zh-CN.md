@@ -28,14 +28,14 @@ accepted change / human attention minute
 
 每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。可选的 `target.solution_ref` 是给作者和 reviewer 参考的官方参考实现；它不是唯一正确答案，也不会被工具链使用。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
 
-`--workflow` 是对比用的分组标签，不是协议文件。可以用任意稳定标签聚合 runs，例如 `baseline`、`codex`、`claude`、`plan-first`、`tdd`。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
+`--workflow` 是对比用的分组标签，不是协议文件。它应该表达流程标签，例如 `baseline`、`plan-first`、`tdd`。模型身份写入 `run.json.model`，例如 `gpt-5.5` 或 `claude-sonnet-4.5`；不要把模型名混进 `workflow_id`。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
 
 ## 快速开始
 
 先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后准备隔离 target worktree：
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id>
+python scripts/prepare_run.py --workflow <workflow> --task <task-id> --model <model>
 ```
 
 AI 或人工 workflow 修改准备好的 `runs/.../target` worktree。Coding prompt 使用 `runs/<workflow>/<task-id>/<run-id>/task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
@@ -94,11 +94,19 @@ python scripts/llm_review_run.py \
 
 如果使用 DeepSeek-compatible review，把 `AI_EVAL_REVIEW_BASE_URL` 设为 `https://api.deepseek.com`，并传入 `--api-key-env DEEPSEEK_API_KEY`。
 
-生成汇总报告：
+生成终端汇总报告：
 
 ```bash
 python scripts/report.py --runs runs
 ```
+
+生成静态对比看板：
+
+```bash
+python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+```
+
+`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model 和同任务结果。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
 
 完整端到端样例见 [examples/go-bugfix-001](examples/go-bugfix-001)。
 
@@ -139,6 +147,7 @@ benchmarks/tasks/       参与运行和报告统计的真实 benchmark 任务
 benchmarks/local/       私有本地实验任务，git 默认忽略
 benchmarks/templates/   可复制的用例编写模板，默认不运行
 runs/                   本地运行证据和 target worktree，git 默认忽略
+reports/                本地生成的看板和报告，git 默认忽略
 examples/               可提交的精选任务和运行证据样例
 integrations/           可选的 Claude Code 和 Codex hook 模板
 schemas/                task、run、score 文件的 JSON schema
