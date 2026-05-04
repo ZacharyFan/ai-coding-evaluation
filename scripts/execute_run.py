@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import subprocess
 import sys
@@ -15,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.validate_task import is_cloneable_git_url
+from scripts.summarize_run_events import summarize_run_events
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -118,14 +120,68 @@ def diff_text(repo: Path, base_ref: str) -> str:
     diff = git(repo, "diff", base_ref)
     if diff.returncode != 0:
         raise RuntimeError(diff.stderr.strip() or f"failed to diff against {base_ref}")
-    return diff.stdout
+    parts = [diff.stdout] if diff.stdout else []
+    for path in untracked_files(repo):
+        untracked_diff = run_command(["git", "diff", "--no-index", "--", "/dev/null", path], repo)
+        if untracked_diff.returncode not in (0, 1):
+            raise RuntimeError(untracked_diff.stderr.strip() or f"failed to diff untracked file {path}")
+        if untracked_diff.stdout:
+            parts.append(untracked_diff.stdout)
+    return "\n".join(part.rstrip() for part in parts if part).rstrip() + ("\n" if parts else "")
 
 
 def changed_files(repo: Path, base_ref: str) -> list[str]:
     diff = git(repo, "diff", "--name-only", base_ref)
     if diff.returncode != 0:
         raise RuntimeError(diff.stderr.strip() or f"failed to list changed files against {base_ref}")
-    return [line for line in diff.stdout.splitlines() if line.strip()]
+    return unique([line for line in diff.stdout.splitlines() if line.strip()] + untracked_files(repo))
+
+
+def untracked_files(repo: Path) -> list[str]:
+    result = git(repo, "ls-files", "--others", "--exclude-standard")
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "failed to list untracked files")
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def unique(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
+
+
+def matches_allowed_path(path: str, allowed_paths: list[str]) -> bool:
+    normalized = path.replace("\\", "/")
+    for pattern in allowed_paths:
+        normalized_pattern = pattern.replace("\\", "/")
+        if normalized == normalized_pattern or fnmatch.fnmatchcase(normalized, normalized_pattern):
+            return True
+    return False
+
+
+def scope_check_result(task: dict[str, Any], changed: list[str]) -> dict[str, Any]:
+    scope = task.get("scope")
+    if not scope:
+        return {
+            "scope_check": "not_configured",
+            "unrelated_files_changed": None,
+            "unrelated_files": None,
+        }
+
+    allowed_paths = scope.get("allowed_paths", [])
+    if not isinstance(allowed_paths, list) or not all(isinstance(path, str) for path in allowed_paths):
+        raise ValueError("task.scope.allowed_paths must be a list of strings")
+
+    unrelated_files = [path for path in changed if not matches_allowed_path(path, allowed_paths)]
+    return {
+        "scope_check": "path_allowlist",
+        "unrelated_files_changed": len(unrelated_files),
+        "unrelated_files": unrelated_files,
+    }
 
 
 def execute_run(
@@ -153,7 +209,9 @@ def execute_run(
     duration_minutes = round((time.monotonic() - started) / 60, 3)
 
     diff = diff_text(target_repo, base_ref)
-    files_changed = len(changed_files(target_repo, base_ref))
+    changed = changed_files(target_repo, base_ref)
+    files_changed = len(changed)
+    scope_result = scope_check_result(task, changed)
 
     result = {
         "duration_minutes": duration_minutes,
@@ -163,8 +221,7 @@ def execute_run(
         },
         "diff": {
             "files_changed": files_changed,
-            "unrelated_files_changed": run.get("diff", {}).get("unrelated_files_changed", 0),
-            "scope_check": run.get("diff", {}).get("scope_check", "not_configured"),
+            **scope_result,
         },
     }
 
@@ -174,6 +231,8 @@ def execute_run(
         (run_dir / "test.log").write_text(test_output, encoding="utf-8")
         (run_dir / "diff.patch").write_text(diff, encoding="utf-8")
         write_json(run_path, updated_run)
+        if (run_dir / "events.jsonl").exists():
+            updated_run = summarize_run_events(run_path, write=True)
 
     if expect_fail and required_passed:
         raise RuntimeError("expected required tests to fail, but they passed")

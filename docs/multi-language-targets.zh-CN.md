@@ -13,6 +13,7 @@
   "target": {
     "repo": "https://github.com/owner/repo.git",
     "base_ref": "完整 commit SHA",
+    "solution_ref": "可选参考解 commit SHA",
     "language": "typescript",
     "package_manager": "pnpm",
     "setup_commands": ["pnpm install"],
@@ -23,6 +24,8 @@
 ```
 
 `base_ref` 很关键。没有固定起始版本，两个工作流的运行结果就不是真正可比较的。`benchmarks/tasks/` 下的公开 benchmark 任务必须使用可 clone 的 Git URL 和完整 commit SHA。本地文件路径只用于 `benchmarks/local/` 实验任务和模板。
+
+`solution_ref` 是可选信息字段。它可以指向给 reviewer 参考的参考实现 commit，但不是唯一有效解，也不会被 `prepare_run.py`、`execute_run.py`、`score_run.py` 或报告使用。
 
 ## 示例
 

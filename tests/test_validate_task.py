@@ -192,6 +192,28 @@ def test_invalid_complexity_values_are_invalid(tmp_path):
     assert any("complexity.context_maturity must be one of" in error for error in errors)
 
 
+def test_scope_allowed_paths_must_be_non_empty_strings(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["scope"] = {"allowed_paths": ["cart/**", "", 42]}
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("scope.allowed_paths must contain only non-empty strings" in error for error in errors)
+
+
+def test_scope_allowed_paths_reject_absolute_or_parent_paths(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["scope"] = {"allowed_paths": ["/etc/passwd", "../secrets"]}
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("scope.allowed_paths must be repo-relative paths" in error for error in errors)
+
+
 @pytest.mark.parametrize("filename", ["task.md", "acceptance.md", "tests.sh"])
 def test_missing_required_task_files_are_invalid(tmp_path, filename):
     task_dir = tmp_path / "task"
@@ -242,6 +264,49 @@ def test_official_task_accepts_remote_git_url_with_full_sha(tmp_path, repo):
     assert errors == []
 
 
+def test_official_task_accepts_optional_solution_ref_with_full_sha(tmp_path):
+    root = tmp_path / "benchmarks" / "tasks"
+    task_dir = root / "task"
+    write_task(
+        task_dir,
+        valid_task_json(
+            target={
+                "repo": "https://github.com/owner/repo.git",
+                "base_ref": FULL_SHA,
+                "solution_ref": "1401af0e545c6838c46cebfb1e2a616b79be1f83",
+                "language": "go",
+                "test_commands": ["./tests.sh"],
+            }
+        ),
+    )
+
+    errors = validate_task_dir(task_dir)
+
+    assert errors == []
+
+
+@pytest.mark.parametrize("solution_ref", ["main", "v1.2.3", "abc123"])
+def test_official_task_rejects_floating_or_short_solution_ref(tmp_path, solution_ref):
+    root = tmp_path / "benchmarks" / "tasks"
+    task_dir = root / "task"
+    write_task(
+        task_dir,
+        valid_task_json(
+            target={
+                "repo": "https://github.com/owner/repo.git",
+                "base_ref": FULL_SHA,
+                "solution_ref": solution_ref,
+                "language": "go",
+                "test_commands": ["./tests.sh"],
+            }
+        ),
+    )
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("official tasks must pin target.solution_ref to a full commit SHA when present" in error for error in errors)
+
+
 @pytest.mark.parametrize("base_ref", ["main", "master", "v1.2.3", "abc123"])
 def test_official_task_rejects_floating_or_short_base_ref(tmp_path, base_ref):
     root = tmp_path / "benchmarks" / "tasks"
@@ -267,6 +332,18 @@ def test_local_task_allows_local_target_repo(tmp_path):
     root = tmp_path / "benchmarks" / "local"
     task_dir = root / "task"
     write_task(task_dir, valid_task_json())
+
+    errors = validate_task_dir(task_dir)
+
+    assert errors == []
+
+
+def test_local_task_allows_placeholder_solution_ref(tmp_path):
+    root = tmp_path / "benchmarks" / "local"
+    task_dir = root / "task"
+    task = json.loads(valid_task_json())
+    task["target"]["solution_ref"] = "optional-reference-solution-sha"
+    write_task(task_dir, json.dumps(task, indent=2))
 
     errors = validate_task_dir(task_dir)
 

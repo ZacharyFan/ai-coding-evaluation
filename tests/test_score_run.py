@@ -1,6 +1,9 @@
 import json
+import subprocess
+import sys
+from pathlib import Path
 
-from scripts.score_run import init_score_doc, score_run, write_initialized_score
+from scripts.score_run import apply_manual_review, init_score_doc, parse_review_assignment, score_run, write_initialized_score
 
 
 def base_task():
@@ -123,6 +126,26 @@ def test_hidden_unknown_does_not_trigger_hidden_gate():
     assert "hidden_tests_failed" not in result["hard_gates"]
 
 
+def test_unknown_cost_is_ignored_by_efficiency():
+    run = base_run()
+    run["cost_usd"] = None
+
+    result = score_run(base_task(), run, base_score())
+
+    assert result["score"] == 100.0
+    assert result["efficiency"] == 1.0
+
+
+def test_unknown_unrelated_file_count_does_not_trigger_gate():
+    run = base_run()
+    run["diff"]["unrelated_files_changed"] = None
+
+    result = score_run(base_task(), run, base_score())
+
+    assert result["score"] == 100.0
+    assert "unrelated_changes" not in result["hard_gates"]
+
+
 def test_old_derived_gate_does_not_stick_after_rescore():
     score = base_score()
     score["hard_gates"] = ["task_not_solved"]
@@ -159,6 +182,9 @@ def test_init_score_doc_creates_manual_draft():
     }
     assert all(value is None for value in draft["review"].values())
     assert all(value == "manual_pending" for value in draft["review_sources"].values())
+    assert draft["manual_hard_gates"] == []
+    assert "derived_hard_gates" not in draft
+    assert "hard_gates" not in draft
     assert "score" not in draft
     assert "raw_score" not in draft
 
@@ -177,6 +203,92 @@ def test_write_initialized_score_refuses_to_overwrite_existing_score(tmp_path):
     assert json.loads(score_path.read_text(encoding="utf-8")) == {"score": 100}
 
 
+def test_apply_manual_review_fills_scores_and_sources():
+    draft = init_score_doc(base_run())
+
+    updated = apply_manual_review(
+        draft,
+        [
+            "correctness=1.0",
+            "regression_safety=1.0",
+            "maintainability=0.8",
+            "test_quality=0.8",
+            "security=1.0",
+            "process_compliance=0.6",
+        ],
+        [],
+    )
+
+    assert updated["review"]["correctness"] == 1.0
+    assert updated["review"]["maintainability"] == 0.8
+    assert updated["review"]["process_compliance"] == 0.6
+    assert all(source == "manual" for source in updated["review_sources"].values())
+    assert updated["manual_hard_gates"] == []
+
+
+def test_apply_manual_review_accepts_manual_hard_gates():
+    updated = apply_manual_review(base_score(), [], ["public_api_break", "public_api_break"])
+
+    assert updated["manual_hard_gates"] == ["public_api_break"]
+
+
+def test_score_run_cli_sets_manual_review_and_scores_in_one_step(tmp_path):
+    task_path = tmp_path / "task.json"
+    run_path = tmp_path / "run.json"
+    score_path = tmp_path / "score.json"
+    task_path.write_text(json.dumps(base_task()), encoding="utf-8")
+    run_path.write_text(json.dumps(base_run()), encoding="utf-8")
+
+    repo_root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "score_run.py"),
+            "--task",
+            str(task_path),
+            "--run",
+            str(run_path),
+            "--score",
+            str(score_path),
+            "--set-review",
+            "correctness=1.0",
+            "regression_safety=1.0",
+            "maintainability=0.8",
+            "test_quality=0.8",
+            "security=1.0",
+            "process_compliance=0.6",
+            "--write",
+        ],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    output = json.loads(result.stdout)
+    score = json.loads(score_path.read_text(encoding="utf-8"))
+    assert output["score"] == 93.0
+    assert score["score"] == 93.0
+    assert score["review"]["correctness"] == 1.0
+    assert score["review"]["process_compliance"] == 0.6
+    assert score["review_sources"]["correctness"] == "manual"
+
+
+def test_parse_review_assignment_rejects_bad_input():
+    for value, expected in [
+        ("correctness", "dimension=value"),
+        ("unknown=1", "unknown review dimension"),
+        ("correctness=high", "must be a number"),
+        ("correctness=1.2", "must be between 0 and 1"),
+    ]:
+        try:
+            parse_review_assignment(value)
+        except ValueError as error:
+            assert expected in str(error)
+        else:
+            raise AssertionError(f"expected invalid review assignment to fail: {value}")
+
+
 def test_incomplete_manual_review_cannot_be_scored():
     draft = init_score_doc(base_run())
 
@@ -184,5 +296,6 @@ def test_incomplete_manual_review_cannot_be_scored():
         score_run(base_task(), base_run(), draft)
     except ValueError as error:
         assert "review.correctness must be filled before scoring" in str(error)
+        assert "--set-review correctness=<0-1>" in str(error)
     else:
         raise AssertionError("expected incomplete manual review to fail scoring")

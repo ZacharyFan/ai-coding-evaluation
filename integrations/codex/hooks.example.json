@@ -1,0 +1,78 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30,
+            "statusMessage": "Recording AI evaluation session"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30,
+            "statusMessage": "Checking evaluation guardrails"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30,
+            "statusMessage": "Recording permission request"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30,
+            "statusMessage": "Recording tool evidence"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$AI_EVAL_REPO/scripts/record_hook_event.py\" --adapter codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

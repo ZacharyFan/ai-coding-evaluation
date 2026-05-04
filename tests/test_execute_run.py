@@ -37,7 +37,19 @@ def write_json(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def write_task_and_run(tmp_path: Path, repo: Path, base_ref: str, test_command: str) -> tuple[Path, Path]:
+def append_event(path: Path, event: dict) -> None:
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, sort_keys=True) + "\n")
+
+
+def write_task_and_run(
+    tmp_path: Path,
+    repo: Path,
+    base_ref: str,
+    test_command: str,
+    *,
+    scope: dict | None = None,
+) -> tuple[Path, Path]:
     task = {
         "id": "example-task",
         "time_budget_minutes": 10,
@@ -62,6 +74,8 @@ def write_task_and_run(tmp_path: Path, repo: Path, base_ref: str, test_command: 
             "efficiency": 10,
         },
     }
+    if scope is not None:
+        task["scope"] = scope
     run = {
         "workflow_id": "baseline",
         "task_id": "example-task",
@@ -74,7 +88,8 @@ def write_task_and_run(tmp_path: Path, repo: Path, base_ref: str, test_command: 
         },
         "diff": {
             "files_changed": 0,
-            "unrelated_files_changed": 0,
+            "unrelated_files_changed": None,
+            "unrelated_files": None,
             "scope_check": "not_configured",
         },
         "process_evidence": {
@@ -122,11 +137,48 @@ def test_execute_run_collects_passing_test_log_diff_and_run_facts(tmp_path):
     assert run["tests"] == {"required_passed": True, "hidden_passed": None}
     assert run["diff"]["files_changed"] == 1
     assert run["diff"]["scope_check"] == "not_configured"
+    assert run["diff"]["unrelated_files_changed"] is None
+    assert run["diff"]["unrelated_files"] is None
     assert "review" not in run
     assert "score" not in run
     assert not (run_dir / "score.json").exists()
     assert "value.txt" in (run_dir / "diff.patch").read_text(encoding="utf-8")
     assert "$ " in (run_dir / "test.log").read_text(encoding="utf-8")
+
+
+def test_execute_run_summarizes_hook_events_when_present(tmp_path):
+    repo, base_ref = init_target_repo(tmp_path)
+    (repo / "value.txt").write_text("green\n", encoding="utf-8")
+    command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
+    task_path, run_path = write_task_and_run(tmp_path, repo, base_ref, command)
+    append_event(
+        run_path.parent / "events.jsonl",
+        {
+            "schema_version": "1",
+            "timestamp": "2026-05-02T00:00:00Z",
+            "source": "codex",
+            "session_id": "s1",
+            "turn_id": "t1",
+            "hook_event": "PostToolUse",
+            "model": "gpt-5.5",
+            "cwd": str(repo),
+            "tool_name": "Read",
+            "action": {
+                "kind": "read",
+                "command_summary": "Read",
+                "paths": ["AGENTS.md"],
+                "success": True,
+            },
+            "classifications": ["tool_use", "read_docs"],
+        },
+    )
+
+    execute_run(task_path, run_path, write=True)
+
+    run = load_json(run_path)
+    assert run["model"] == "gpt-5.5"
+    assert run["process_evidence"]["project_instructions_read"] is True
+    assert run["event_collection"]["event_count"] == 1
 
 
 def test_execute_run_uses_prepared_worktree_from_run_json(tmp_path):
@@ -149,6 +201,50 @@ def test_execute_run_uses_prepared_worktree_from_run_json(tmp_path):
 
     assert result["tests"]["required_passed"] is True
     assert load_json(run_path)["diff"]["files_changed"] == 1
+
+
+def test_execute_run_applies_scope_allowlist(tmp_path):
+    repo, base_ref = init_target_repo(tmp_path)
+    (repo / "value.txt").write_text("green\n", encoding="utf-8")
+    (repo / "notes.md").write_text("unrelated\n", encoding="utf-8")
+    command = f"{sys.executable} -c \"print('ok')\""
+    task_path, run_path = write_task_and_run(
+        tmp_path,
+        repo,
+        base_ref,
+        command,
+        scope={"allowed_paths": ["value.txt"]},
+    )
+
+    result = execute_run(task_path, run_path, write=True)
+
+    run = load_json(run_path)
+    assert result["diff"]["files_changed"] == 2
+    assert run["diff"]["scope_check"] == "path_allowlist"
+    assert run["diff"]["unrelated_files_changed"] == 1
+    assert run["diff"]["unrelated_files"] == ["notes.md"]
+    assert "notes.md" in (run_path.parent / "diff.patch").read_text(encoding="utf-8")
+
+
+def test_execute_run_scope_allowlist_supports_globs(tmp_path):
+    repo, base_ref = init_target_repo(tmp_path)
+    (repo / "cart").mkdir()
+    (repo / "cart" / "cart.go").write_text("package cart\n", encoding="utf-8")
+    command = f"{sys.executable} -c \"print('ok')\""
+    task_path, run_path = write_task_and_run(
+        tmp_path,
+        repo,
+        base_ref,
+        command,
+        scope={"allowed_paths": ["cart/**"]},
+    )
+
+    execute_run(task_path, run_path, write=True)
+
+    run = load_json(run_path)
+    assert run["diff"]["scope_check"] == "path_allowlist"
+    assert run["diff"]["unrelated_files_changed"] == 0
+    assert run["diff"]["unrelated_files"] == []
 
 
 def test_execute_run_requires_prepare_run_for_remote_target_without_worktree(tmp_path):

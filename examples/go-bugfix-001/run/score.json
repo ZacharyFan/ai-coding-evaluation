@@ -16,7 +16,7 @@
   "review_notes": {
     "correctness": "The diff fixes invalid discount percentages while preserving existing behavior.",
     "maintainability": "The change is local to cart.ApplyDiscount and keeps the public signature unchanged.",
-    "process_compliance": "Task docs, tests, diff, transcript, and self-review evidence are preserved."
+    "process_compliance": "Task docs, redacted hook events, tests, diff, transcript, and self-review evidence are preserved."
   },
   "review_sources": {
     "correctness": "human",

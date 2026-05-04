@@ -84,6 +84,7 @@ context_maturity
 
 - `target.repo` 使用可 clone 的 Git URL
 - `target.base_ref` 使用完整 commit SHA
+- 如果有参考实现，`target.solution_ref` 也使用完整 commit SHA
 - 足够精确的复现步骤或入口点，让另一个人能重跑
 - 必跑检查能在改动前失败，或能保护目标行为
 - hidden checks 描述 reviewer 关注点，但不泄露解法

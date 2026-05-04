@@ -28,10 +28,15 @@
         "working_directory": { "type": "string" }
       }
     },
-    "model": { "type": "string" },
+    "model": { "type": ["string", "null"] },
+    "models_used": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "duration_minutes": { "type": "number", "minimum": 0 },
     "human_interventions": { "type": "integer", "minimum": 0 },
-    "cost_usd": { "type": "number", "minimum": 0 },
+    "permission_requests": { "type": "integer", "minimum": 0 },
+    "cost_usd": { "type": ["number", "null"], "minimum": 0 },
     "tests": {
       "type": "object",
       "required": ["required_passed", "hidden_passed"],
@@ -45,7 +50,11 @@
       "required": ["files_changed", "unrelated_files_changed"],
       "properties": {
         "files_changed": { "type": "integer", "minimum": 0 },
-        "unrelated_files_changed": { "type": "integer", "minimum": 0 },
+        "unrelated_files_changed": { "type": ["integer", "null"], "minimum": 0 },
+        "unrelated_files": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
         "scope_check": { "type": "string" }
       }
     },
@@ -72,17 +81,29 @@
     "adoption": {
       "type": "object",
       "properties": {
-        "ai_generated_lines": { "type": "integer", "minimum": 0 },
-        "accepted_lines": { "type": "integer", "minimum": 0 },
-        "adoption_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+        "ai_generated_lines": { "type": ["integer", "null"], "minimum": 0 },
+        "accepted_lines": { "type": ["integer", "null"], "minimum": 0 },
+        "adoption_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
       }
     },
     "context_metrics": {
       "type": "object",
       "properties": {
-        "call_rate": { "type": "number", "minimum": 0, "maximum": 1 },
-        "hit_rate": { "type": "number", "minimum": 0, "maximum": 1 },
-        "adoption_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+        "call_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "hit_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "adoption_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "event_collection": {
+      "type": "object",
+      "properties": {
+        "events_path": { "type": "string" },
+        "event_count": { "type": "integer", "minimum": 0 },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "summarized_at": { "type": "string" }
       }
     }
   }
