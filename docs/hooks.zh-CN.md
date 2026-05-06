@@ -123,6 +123,7 @@ python scripts/summarize_run_events.py \
 ```text
 model
 models_used
+duration_minutes
 human_interventions
 permission_requests
 process_evidence.project_instructions_read
@@ -135,7 +136,7 @@ context_metrics.hit_rate
 event_collection
 ```
 
-未知值继续保持未知。hook 层不计算 `cost_usd`、hidden test 结果、采纳率，也不猜测 plan 是否被语义上遵循。
+`duration_minutes` 是 coding workflow 从第一条 `UserPromptSubmit` 到最后一个终止事件的墙钟耗时。未知值继续保持未知。hook 层不计算 `cost_usd`、hidden test 结果、采纳率，也不猜测 plan 是否被语义上遵循。
 
 ## 护栏
 

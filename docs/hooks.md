@@ -123,6 +123,7 @@ Derived fields include:
 ```text
 model
 models_used
+duration_minutes
 human_interventions
 permission_requests
 process_evidence.project_instructions_read
@@ -135,7 +136,7 @@ context_metrics.hit_rate
 event_collection
 ```
 
-Unknown values stay unknown. The hook layer does not calculate `cost_usd`, hidden test results, adoption rate, or whether a plan was semantically followed.
+`duration_minutes` is the coding workflow wall-clock duration from the first `UserPromptSubmit` to the final terminal event. Unknown values stay unknown. The hook layer does not calculate `cost_usd`, hidden test results, adoption rate, or whether a plan was semantically followed.
 
 ## Guardrail
 
