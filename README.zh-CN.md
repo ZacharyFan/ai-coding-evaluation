@@ -4,6 +4,8 @@
 
 这个仓库是一个可复跑 benchmark，用真实工程任务比较不同 AI Coding workflow 的效果。
 
+这不是 agent 框架，也不是模型排行榜；它是一个在可复跑工程任务上比较 AI Coding workflow 的评估协议。
+
 核心问题不是“AI 会不会写代码”，而是：
 
 ```text
@@ -29,6 +31,29 @@ accepted change / human attention minute
 每个 workflow 从同一个起点运行同一个任务。公开任务指向可 clone 的目标仓库和固定 commit SHA。可选的 `target.solution_ref` 是给作者和 reviewer 参考的官方参考实现；它不是唯一正确答案，也不会被工具链使用。一次 run 会把事实记录在 `run.json`，把评分结果记录在 `score.json`，旁边保留交互记录、diff 和测试日志证据。
 
 `--workflow` 是对比用的分组标签，不是协议文件。它应该表达流程标签，例如 `baseline`、`plan-first`、`tdd`。模型身份写入 `run.json.model`，例如 `gpt-5.5` 或 `claude-sonnet-4.5`；不要把模型名混进 `workflow_id`。真正的执行过程由操作者、`transcript.md`、`run.json.process_evidence` 和运行证据记录。
+
+## 心智模型
+
+```text
+task.json + task.md + acceptance.md
+        ->
+prepare_run 创建隔离 target worktree
+        ->
+AI/人工 coding 修改 runs/.../target
+        ->
+execute_run 采集测试、diff 和 scope 事实
+        ->
+人工 review 或 llm_review_run 写入 score.json
+        ->
+report/dashboard 对比 workflows 和 models
+```
+
+```text
+task      = 可复用的 benchmark 用例
+run       = 某个 workflow/model 在某个 task 上的一次尝试
+score     = 这次 run 的 review 结果
+dashboard = 只读的对比投影
+```
 
 ## 快速开始
 
@@ -111,6 +136,22 @@ python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output report
 完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
 
 ## 贡献评估用例
+
+有价值的公开 benchmark 用例：
+
+- 来自真实工程变更
+- 使用固定的公开 target repo 和 base commit
+- 定义清晰的期望行为
+- 能通过可复跑命令验证
+- 避免私有数据、凭据和只能在本机运行的环境
+
+避免：
+
+- 玩具算法题
+- 模糊的产品需求
+- 只能在某个人电脑上运行的任务
+- 把答案泄露到 `task.md`
+- 没有可复跑测试或 review 信号的任务
 
 复制最接近的任务类型模板：
 
