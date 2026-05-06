@@ -1,0 +1,64 @@
+{
+  "adoption": {
+    "accepted_lines": null,
+    "adoption_rate": null,
+    "ai_generated_lines": null
+  },
+  "context_metrics": {
+    "adoption_rate": null,
+    "call_rate": 0.4,
+    "hit_rate": 1.0
+  },
+  "cost_usd": null,
+  "diff": {
+    "files_changed": 1,
+    "scope_check": "path_allowlist",
+    "unrelated_files": [],
+    "unrelated_files_changed": 0
+  },
+  "duration_minutes": 0.004,
+  "event_collection": {
+    "event_count": 8,
+    "events_path": "examples/go-bugfix-l1-c1/run/events.jsonl",
+    "sources": [
+      "codex"
+    ],
+    "summarized_at": "2026-05-02T14:11:30Z"
+  },
+  "human_interventions": 0,
+  "model": "gpt-5.5",
+  "models_used": [
+    "gpt-5.5"
+  ],
+  "permission_requests": 0,
+  "process_evidence": {
+    "knowledge_sources_used": [],
+    "plan_followed": true,
+    "project_instructions_read": true,
+    "relevant_docs_read": [
+      "README.md",
+      "docs/contexts/catalog.md"
+    ],
+    "self_review_performed": true,
+    "tools_used": [
+      "Read",
+      "apply_patch",
+      "./scripts/run_eval_case.sh go-bugfix-l1-c1",
+      "git diff -- catalog/catalog.go"
+    ]
+  },
+  "target": {
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "language": "go",
+    "package_manager": "go",
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "working_directory": ".",
+    "worktree": "runs/baseline/go-bugfix-l1-c1/demo-002/target"
+  },
+  "task_id": "go-bugfix-l1-c1",
+  "tests": {
+    "hidden_passed": null,
+    "required_passed": true
+  },
+  "workflow_id": "baseline"
+}

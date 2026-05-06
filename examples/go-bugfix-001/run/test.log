@@ -1,4 +1,0 @@
-$ go test ./...
-exit_code=0
-
-ok  	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/cart	(cached)

@@ -1,0 +1,46 @@
+{
+  "id": "go-refactor-l3-c2",
+  "type": "refactor",
+  "effort_size": "large",
+  "complexity": {
+    "business_complexity": "L3_complex",
+    "context_maturity": "C2_partial"
+  },
+  "time_budget_minutes": 55,
+  "max_human_interventions": 4,
+  "max_cost_usd": 4.0,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "e6c8eca2d1eab8167c464ba21f8fd77710c701e6",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-refactor-l3-c2"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "Retry policy is centralized.",
+    "Gateway and ledger interfaces remain unchanged."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "payment_saga/**",
+      "docs/contexts/payment_saga.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

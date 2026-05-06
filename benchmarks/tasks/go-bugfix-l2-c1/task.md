@@ -1,0 +1,28 @@
+# Task: Validate all checkout inventory lines
+
+Scenario: checkout flow (`checkout`).
+
+- Business complexity: L2_linked, multi-domain model coordination across at least three domain packages.
+- Context maturity: C1_complete, C1: `docs/contexts/checkout.md` fully documents the cart/pricing/inventory/shipping contract.
+
+Context:
+
+checkout.BuildQuote checks only the first inventory line despite the documented multi-domain flow.
+
+Expected behavior:
+
+- any unavailable line returns an error
+- tax and shipping math stay unchanged
+- links cart/pricing/inventory/shipping
+
+Reproduction:
+
+```bash
+./scripts/run_eval_case.sh go-bugfix-l2-c1
+```
+
+Constraints:
+
+- Do not special-case tests.
+- Keep existing public APIs compatible unless this task explicitly asks for a new API.
+- Keep the diff within `checkout/**, cart/**, pricing/**, inventory/**, shipping/**, docs/contexts/checkout.md`.

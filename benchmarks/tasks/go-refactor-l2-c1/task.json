@@ -1,0 +1,50 @@
+{
+  "id": "go-refactor-l2-c1",
+  "type": "refactor",
+  "effort_size": "medium",
+  "complexity": {
+    "business_complexity": "L2_linked",
+    "context_maturity": "C1_complete"
+  },
+  "time_budget_minutes": 40,
+  "max_human_interventions": 3,
+  "max_cost_usd": 2.5,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "14b1576c190b555afe4b89e1e8dc10aecca067de",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-refactor-l2-c1"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "The helper coordinates cart lines and inventory snapshot.",
+    "No domain package is merged into checkout."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "checkout/**",
+      "cart/**",
+      "pricing/**",
+      "inventory/**",
+      "shipping/**",
+      "docs/contexts/checkout.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

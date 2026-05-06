@@ -1,0 +1,50 @@
+{
+  "id": "go-bugfix-l2-c2",
+  "type": "bugfix",
+  "effort_size": "medium",
+  "complexity": {
+    "business_complexity": "L2_linked",
+    "context_maturity": "C2_partial"
+  },
+  "time_budget_minutes": 40,
+  "max_human_interventions": 3,
+  "max_cost_usd": 2.5,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "86492d9a2f98c743e324da65792db86df79645f8",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-bugfix-l2-c2"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "Failure ordering prevents partial local side effects.",
+    "The partial docs are not treated as authoritative for failure paths."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "returns/**",
+      "orders/**",
+      "refunds/**",
+      "inventory/**",
+      "ledger/**",
+      "docs/contexts/returns.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

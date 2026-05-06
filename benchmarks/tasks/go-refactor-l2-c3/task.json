@@ -1,0 +1,48 @@
+{
+  "id": "go-refactor-l2-c3",
+  "type": "refactor",
+  "effort_size": "medium",
+  "complexity": {
+    "business_complexity": "L2_linked",
+    "context_maturity": "C3_missing"
+  },
+  "time_budget_minutes": 40,
+  "max_human_interventions": 3,
+  "max_cost_usd": 2.5,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "13ce581acde2ff2c103c3c146c6f7613cfcf391f",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-refactor-l2-c3"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "The helper coordinates multiple domain packages.",
+    "No docs are added for C3."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "subscriptions/**",
+      "account/**",
+      "billing/**",
+      "entitlement/**"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

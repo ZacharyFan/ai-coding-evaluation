@@ -108,7 +108,7 @@ python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output report
 
 `report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model 和同任务结果。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
 
-完整端到端样例见 [examples/go-bugfix-001](examples/go-bugfix-001)。
+完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
 
 ## 贡献评估用例
 

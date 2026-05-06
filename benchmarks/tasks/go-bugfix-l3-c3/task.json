@@ -1,0 +1,45 @@
+{
+  "id": "go-bugfix-l3-c3",
+  "type": "bugfix",
+  "effort_size": "large",
+  "complexity": {
+    "business_complexity": "L3_complex",
+    "context_maturity": "C3_missing"
+  },
+  "time_budget_minutes": 55,
+  "max_human_interventions": 4,
+  "max_cost_usd": 4.0,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "0553e70696cce67295a140144f548f055f52846b",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-bugfix-l3-c3"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "The fix uses service-boundary idempotency.",
+    "No C3 context doc is created."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "settlement_reconciliation/**"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}
