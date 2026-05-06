@@ -4,6 +4,8 @@
 
 This repository is a repeatable benchmark for comparing AI coding workflows on real engineering tasks.
 
+This is not an agent framework or a model leaderboard. It is an evaluation protocol for comparing workflows under repeatable engineering tasks.
+
 The core question is not "can the AI write code?" It is:
 
 ```text
@@ -29,6 +31,29 @@ Each benchmark task defines:
 Each workflow runs the same task from the same starting point. Public tasks point at cloneable target repositories and fixed commit SHAs. Optional `target.solution_ref` values are reference implementations for authors and reviewers; they are not the only acceptable solution and are not used by the tooling. A run preserves facts in `run.json` and scoring results in `score.json`, alongside transcript, diff, and test log evidence.
 
 `--workflow` is a comparison label, not a protocol file. Use it for process labels such as `baseline`, `plan-first`, or `tdd`. Use `run.json.model` for model identity such as `gpt-5.5` or `claude-sonnet-4.5`; do not mix model names into `workflow_id`. The actual execution process is captured by the operator, `transcript.md`, `run.json.process_evidence`, and the collected run evidence.
+
+## Mental Model
+
+```text
+task.json + task.md + acceptance.md
+        ->
+prepare_run creates isolated target worktree
+        ->
+AI/human coding modifies runs/.../target
+        ->
+execute_run collects tests, diff, and scope facts
+        ->
+manual review or llm_review_run writes score.json
+        ->
+report/dashboard compare workflows and models
+```
+
+```text
+task      = reusable benchmark case
+run       = one workflow/model attempt on one task
+score     = review result for that run
+dashboard = read-only comparison projection
+```
 
 ## Quick Start
 
@@ -111,6 +136,22 @@ python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output report
 See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
 
 ## Contribute A Task
+
+A useful public benchmark task:
+
+- Comes from a real engineering change
+- Uses a fixed public target repository and base commit
+- Defines clear expected behavior
+- Can be verified by repeatable commands
+- Avoids private data, credentials, and local-only setup
+
+Avoid:
+
+- Toy algorithm problems
+- Vague product requests
+- Tasks only runnable on one person's machine
+- Leaking the answer into `task.md`
+- Tasks with no repeatable test or review signal
 
 Copy the closest task-type template:
 
