@@ -1,0 +1,23 @@
+$ ./scripts/run_eval_case.sh go-bugfix-l1-c1
+exit_code=0
+
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/account	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/billing	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/cart	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/checkout	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/entitlement	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/fulfillment_saga	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/inventory	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/orders	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/returns	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/pricing	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/refunds	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/payment_saga	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/ledger	[no test files]
+ok  	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/catalog	(cached)
+ok  	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/customerprofile	(cached)
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/settlement_reconciliation	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/shipping	[no test files]
+?   	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/subscriptions	[no test files]
+ok  	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/taxrules	(cached)
+ok  	github.com/ZacharyFan/ai-coding-evaluation-demo-golang/evaltmp/go-bugfix-l1-c1	0.567s

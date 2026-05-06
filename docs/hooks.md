@@ -61,7 +61,15 @@ Codex hook coverage is useful but not a security boundary. Current Codex hooks d
 
 ## Claude Code
 
-Use `integrations/claude-code/settings.example.json` as a copyable template for Claude Code settings.
+Use `integrations/claude-code/settings.example.json` as a copyable template for Claude Code settings. Claude Code settings can live in:
+
+```text
+~/.claude/settings.json
+.claude/settings.json
+.claude/settings.local.json
+```
+
+Copy or merge the template into one of those settings files. For benchmark runs, prefer the target worktree's `.claude/settings.local.json` so the hook is scoped to that run instead of every Claude Code project.
 
 The template records:
 
@@ -77,6 +85,8 @@ SessionEnd
 ```
 
 Claude's `InstructionsLoaded` event makes `project_instructions_read` more reliable than best-effort file-read inference.
+
+Inside Claude Code, run `/status` to confirm the settings file is loaded. After one prompt or tool call, check `$AI_EVAL_RUN_DIR/events.jsonl` for recorded events.
 
 ## What Gets Recorded
 

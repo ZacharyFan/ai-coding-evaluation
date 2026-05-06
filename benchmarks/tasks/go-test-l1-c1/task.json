@@ -1,0 +1,46 @@
+{
+  "id": "go-test-l1-c1",
+  "type": "test",
+  "effort_size": "small",
+  "complexity": {
+    "business_complexity": "L1_standardized",
+    "context_maturity": "C1_complete"
+  },
+  "time_budget_minutes": 25,
+  "max_human_interventions": 2,
+  "max_cost_usd": 1.5,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "c1e1a21ed33fb016c4664fdeb9f6411c73c73d50",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-test-l1-c1"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "A named test covers negative price.",
+    "The test runs under go test ./catalog."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "catalog/**",
+      "docs/contexts/catalog.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

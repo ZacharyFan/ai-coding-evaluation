@@ -4,14 +4,14 @@ from pathlib import Path
 from scripts.execute_run import load_json
 
 
-EXAMPLE_ROOT = Path("examples/go-bugfix-001")
+EXAMPLE_ROOT = Path("examples/go-bugfix-l1-c1")
 
 
 def test_go_bugfix_example_task_is_valid():
     task_dir = EXAMPLE_ROOT / "task"
     task = load_json(task_dir / "task.json")
 
-    assert task["id"] == "go-bugfix-001"
+    assert task["id"] == "go-bugfix-l1-c1"
     assert task["target"]["repo"] == "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git"
     for filename in (
         "task.md",
@@ -28,11 +28,11 @@ def test_go_bugfix_example_run_and_score_are_valid_json():
     score = load_json(EXAMPLE_ROOT / "run" / "score.json")
 
     assert run["workflow_id"] == "baseline"
-    assert run["task_id"] == "go-bugfix-001"
+    assert run["task_id"] == "go-bugfix-l1-c1"
     assert "review" not in run
     assert "score" not in run
     assert score["workflow_id"] == "baseline"
-    assert score["task_id"] == "go-bugfix-001"
+    assert score["task_id"] == "go-bugfix-l1-c1"
     assert score["score"] == 100.0
     assert score["hard_gates"] == []
     assert score["derived_hard_gates"] == []

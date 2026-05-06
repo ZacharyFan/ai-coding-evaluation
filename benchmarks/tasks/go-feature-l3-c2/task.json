@@ -1,0 +1,46 @@
+{
+  "id": "go-feature-l3-c2",
+  "type": "feature",
+  "effort_size": "large",
+  "complexity": {
+    "business_complexity": "L3_complex",
+    "context_maturity": "C2_partial"
+  },
+  "time_budget_minutes": 55,
+  "max_human_interventions": 4,
+  "max_cost_usd": 4.0,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "acd6e3b4d8c286e654e373f72dde9f875a0ac5a0",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-feature-l3-c2"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "The feature crosses service interfaces.",
+    "Retry semantics remain compatible with partial docs."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "payment_saga/**",
+      "docs/contexts/payment_saga.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}

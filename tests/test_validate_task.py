@@ -19,7 +19,7 @@ def test_task_type_templates_are_valid(template):
 def test_default_task_root_discovers_real_tasks_only():
     task_dirs = expand_task_dirs([Path("benchmarks/tasks")])
 
-    assert Path("benchmarks/tasks/go-bugfix-001") in task_dirs
+    assert Path("benchmarks/tasks/go-bugfix-l1-c1") in task_dirs
     assert all("templates" not in task_dir.parts for task_dir in task_dirs)
 
 

@@ -108,7 +108,7 @@ python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output report
 
 `report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, and per-task results. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
 
-See [examples/go-bugfix-001](examples/go-bugfix-001) for a completed end-to-end run.
+See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
 
 ## Contribute A Task
 

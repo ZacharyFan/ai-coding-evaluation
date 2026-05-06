@@ -1,0 +1,46 @@
+{
+  "id": "go-refactor-l1-c1",
+  "type": "refactor",
+  "effort_size": "small",
+  "complexity": {
+    "business_complexity": "L1_standardized",
+    "context_maturity": "C1_complete"
+  },
+  "time_budget_minutes": 25,
+  "max_human_interventions": 2,
+  "max_cost_usd": 1.5,
+  "target": {
+    "repo": "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git",
+    "base_ref": "85dfb40909e0ef9e5d62e53e8e987256756fca9b",
+    "solution_ref": "40106bdbadb5a267f528e1ca96a540b4b0012fdb",
+    "language": "go",
+    "package_manager": "go",
+    "setup_commands": [],
+    "test_commands": [
+      "./scripts/run_eval_case.sh go-refactor-l1-c1"
+    ],
+    "working_directory": "."
+  },
+  "required_tests": [
+    "./tests.sh"
+  ],
+  "hidden_checks": [
+    "SKU normalization is centralized.",
+    "No exported field or type is renamed."
+  ],
+  "scope": {
+    "allowed_paths": [
+      "catalog/**",
+      "docs/contexts/catalog.md"
+    ]
+  },
+  "scoring_weights": {
+    "correctness": 35,
+    "regression_safety": 15,
+    "maintainability": 15,
+    "test_quality": 10,
+    "security": 10,
+    "process_compliance": 5,
+    "efficiency": 10
+  }
+}
