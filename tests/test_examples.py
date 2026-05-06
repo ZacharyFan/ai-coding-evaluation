@@ -47,8 +47,7 @@ def test_go_bugfix_example_hook_events_are_curated_and_summarized():
     assert run["event_collection"]["sources"] == ["codex"]
     assert run["model"] == "gpt-5.5"
     assert run["human_interventions"] == 0
-    assert run["context_metrics"]["call_rate"] == 0.4
-    assert run["context_metrics"]["hit_rate"] == 1.0
+    assert "context_metrics" not in run
     assert run["process_evidence"]["self_review_performed"] is True
     prompt_events = [event for event in events if event["hook_event"] == "UserPromptSubmit"]
     assert prompt_events[0]["action"]["command_summary"].startswith("user_prompt_chars=")

@@ -89,13 +89,10 @@ def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path, model:
             "self_review_performed": False,
         },
         "adoption": {
+            "candidate_ref": None,
+            "accepted_ref": None,
             "ai_generated_lines": None,
             "accepted_lines": None,
-            "adoption_rate": None,
-        },
-        "context_metrics": {
-            "call_rate": None,
-            "hit_rate": None,
             "adoption_rate": None,
         },
     }

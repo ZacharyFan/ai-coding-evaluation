@@ -80,17 +80,13 @@
     },
     "adoption": {
       "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_ref", "accepted_ref", "ai_generated_lines", "accepted_lines", "adoption_rate"],
       "properties": {
+        "candidate_ref": { "type": ["string", "null"] },
+        "accepted_ref": { "type": ["string", "null"] },
         "ai_generated_lines": { "type": ["integer", "null"], "minimum": 0 },
         "accepted_lines": { "type": ["integer", "null"], "minimum": 0 },
-        "adoption_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
-      }
-    },
-    "context_metrics": {
-      "type": "object",
-      "properties": {
-        "call_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "hit_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "adoption_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
       }
     },

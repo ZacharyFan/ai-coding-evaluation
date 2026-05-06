@@ -76,6 +76,27 @@ python scripts/execute_run.py \
   --write
 ```
 
+可选采纳证据：如果要计算行级采纳率，让 AI workflow 或 reviewer 先把 candidate 结果提交成 commit，再把这个 candidate commit 与最终采纳 commit 对比。这个指标只用于链路诊断，不影响 `score.json`。
+
+```bash
+cd runs/<workflow>/<task-id>/<run-id>/target
+git add .
+git commit -m "candidate for <task-id>"
+git rev-parse HEAD
+```
+
+最终采纳版本也形成 commit 后：
+
+```bash
+python scripts/adoption_lines.py \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --candidate-ref <candidate-sha> \
+  --accepted-ref <accepted-sha> \
+  --write
+```
+
+`candidate_ref` 是 AI candidate commit。`accepted_ref` 是最终采纳 commit。`target.solution_ref` 仍然只是参考解，不作为默认采纳来源。
+
 可选 review 辅助：如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff。这个 helper 会在存在 `task.scope.allowed_paths` 时只展示任务允许范围内的差异，输出带文件标题和行号的 reviewer-friendly diff view，并用红色背景标记候选侧行、绿色背景标记参考侧行。它只给 reviewer 提供上下文，不能按“和参考解相似度”打分。
 
 ```bash
@@ -131,7 +152,13 @@ python scripts/report.py --runs runs
 python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
 ```
 
-`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model 和同任务结果。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
+从 hook 证据生成跨 run 链路指标：
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。链路指标依赖 hook events；没有非空 `events.jsonl` 的 run 不计入分母。
 
 完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
 

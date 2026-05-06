@@ -20,8 +20,18 @@ def test_run_schema_is_facts_only():
     assert schema["properties"]["tests"]["properties"]["hidden_passed"]["type"] == ["boolean", "null"]
     assert schema["properties"]["diff"]["properties"]["unrelated_files_changed"]["type"] == ["integer", "null"]
     assert schema["properties"]["diff"]["properties"]["unrelated_files"]["type"] == ["array", "null"]
+    assert schema["properties"]["adoption"]["additionalProperties"] is False
+    assert schema["properties"]["adoption"]["required"] == [
+        "candidate_ref",
+        "accepted_ref",
+        "ai_generated_lines",
+        "accepted_lines",
+        "adoption_rate",
+    ]
+    assert schema["properties"]["adoption"]["properties"]["candidate_ref"]["type"] == ["string", "null"]
+    assert schema["properties"]["adoption"]["properties"]["accepted_ref"]["type"] == ["string", "null"]
     assert schema["properties"]["adoption"]["properties"]["adoption_rate"]["type"] == ["number", "null"]
-    assert schema["properties"]["context_metrics"]["properties"]["call_rate"]["type"] == ["number", "null"]
+    assert "context_metrics" not in schema["properties"]
     assert "event_collection" in schema["properties"]
     assert "models_used" in schema["properties"]
     assert "self_review_performed" in schema["properties"]["process_evidence"]["properties"]

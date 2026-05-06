@@ -87,15 +87,13 @@ def test_prepare_run_clones_target_and_writes_run_json(tmp_path):
     assert run["tests"]["hidden_passed"] is None
     assert run["process_evidence"]["self_review_performed"] is False
     assert run["adoption"] == {
+        "candidate_ref": None,
+        "accepted_ref": None,
         "ai_generated_lines": None,
         "accepted_lines": None,
         "adoption_rate": None,
     }
-    assert run["context_metrics"] == {
-        "call_rate": None,
-        "hit_rate": None,
-        "adoption_rate": None,
-    }
+    assert "context_metrics" not in run
     assert (run_dir / "task.md").read_text(encoding="utf-8") == "# Task\nUse the target worktree.\n"
     assert (run_dir / "task.zh-CN.md").read_text(encoding="utf-8") == "# 任务\n使用 target worktree。\n"
     assert not (run_dir / "coding-prompt.md").exists()

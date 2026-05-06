@@ -101,10 +101,20 @@ Events keep summaries, not full content:
 ```text
 source, session_id, turn_id, hook_event, model, cwd, tool_name
 action.kind, action.command_summary, action.paths, action.success
+action.result_summary.observed, empty, result_count, output_chars, line_count
+context.type, context.id, context.classification_source
 classifications
 ```
 
-The recorder redacts common API keys, tokens, passwords, bearer tokens, OpenAI-style `sk-*` keys, and JWT-like values. It does not store full prompts, file contents, or large tool output.
+The recorder redacts common API keys, tokens, passwords, bearer tokens, OpenAI-style `sk-*` keys, and JWT-like values. It does not store full prompts, file contents, or large tool output. `result_summary` stores metadata only: whether output was observed, whether it was empty, and small counts. It is used for true hit-rate calculation without preserving tool output.
+
+Context classification is deliberately conservative:
+
+```text
+task.json context_sources -> adapter/tool metadata -> path/name heuristic -> unknown
+```
+
+Prefer explicit `task.json.context_sources` mappings for benchmark tasks. If a context event cannot be classified safely, it is marked `unknown`; wrong categories are worse than missing categories.
 
 ## Derived Fields
 
@@ -131,12 +141,18 @@ process_evidence.relevant_docs_read
 process_evidence.knowledge_sources_used
 process_evidence.tools_used
 process_evidence.self_review_performed
-context_metrics.call_rate
-context_metrics.hit_rate
 event_collection
 ```
 
-`duration_minutes` is the coding workflow wall-clock duration from the first `UserPromptSubmit` to the final terminal event. Unknown values stay unknown. The hook layer does not calculate `cost_usd`, hidden test results, adoption rate, or whether a plan was semantically followed.
+`duration_minutes` is the coding workflow wall-clock duration from the first `UserPromptSubmit` to the final terminal event. Unknown values stay unknown. The hook layer does not calculate `cost_usd`, hidden test results, adoption rate, link metrics, or whether a plan was semantically followed.
+
+Cross-run link metrics are calculated separately:
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+That script calculates call rate, hit rate, and adoption rate across runs with non-empty `events.jsonl`.
 
 ## Guardrail
 

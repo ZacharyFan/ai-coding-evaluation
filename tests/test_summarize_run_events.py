@@ -34,13 +34,10 @@ def base_run() -> dict:
             "self_review_performed": False,
         },
         "adoption": {
+            "candidate_ref": None,
+            "accepted_ref": None,
             "ai_generated_lines": None,
             "accepted_lines": None,
-            "adoption_rate": None,
-        },
-        "context_metrics": {
-            "call_rate": None,
-            "hit_rate": None,
             "adoption_rate": None,
         },
     }
@@ -78,7 +75,7 @@ def event(
     }
 
 
-def test_summarizes_docs_tools_self_review_and_context_metrics(tmp_path):
+def test_summarizes_docs_tools_and_self_review_without_context_metrics(tmp_path):
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, base_run())
@@ -129,8 +126,7 @@ def test_summarizes_docs_tools_self_review_and_context_metrics(tmp_path):
     assert updated["process_evidence"]["tools_used"] == ["Read", "apply_patch", "go test ./...", "WebFetch"]
     assert updated["process_evidence"]["knowledge_sources_used"] == ["WebFetch"]
     assert updated["process_evidence"]["self_review_performed"] is True
-    assert updated["context_metrics"]["call_rate"] == 0.5
-    assert updated["context_metrics"]["hit_rate"] == 1.0
+    assert "context_metrics" not in updated
     assert updated["event_collection"]["event_count"] == 4
     assert json.loads(run_path.read_text(encoding="utf-8"))["event_collection"]["sources"] == ["codex"]
 

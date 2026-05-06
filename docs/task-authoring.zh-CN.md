@@ -40,6 +40,18 @@
 
 如果省略 `scope`，`execute_run.py` 会记录 `scope_check=not_configured`，并把无关文件状态留为未知。如果某个 changed file 不匹配 allowlist，`score_run.py` 会派生 `unrelated_changes` hard gate。
 
+如果目标仓库有明确的文档、知识文件、组件文档、SPEC、Skills 或 MCP 工具，可以配置可选 `context_sources`。Hook 事件会优先使用这些映射，再退回 heuristic，因此链路指标更可信：
+
+```json
+"context_sources": [
+  {"type": "knowledge", "path_globs": ["docs/contexts/**"]},
+  {"type": "project_doc", "path_globs": ["README.md", "AGENTS.md", "docs/**/*.md"]},
+  {"type": "mcp", "tool_names": ["mcp__docs__search"]}
+]
+```
+
+映射要保守。无法准确分类的来源宁可保持 `unknown`。
+
 ## 如何选择规模和复杂度
 
 用 `effort_size` 表达工作量：

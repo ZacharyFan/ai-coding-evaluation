@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 
-CONTEXT_CLASSES = {"read_docs", "web_context"}
 INSTRUCTION_FILENAMES = {"agents.md", "claude.md", "readme.md", "readme.zh-cn.md"}
 RUN_EVAL_CASE_PATTERN = re.compile(r"(^|\s)(?:\./)?scripts/run_eval_case\.sh(\s|$)")
 
@@ -176,23 +175,6 @@ def model_fields(events: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
     return primary, models
 
 
-def context_metrics(events: list[dict[str, Any]]) -> dict[str, float | None]:
-    tool_events = [event for event in events if "tool_use" in classifications(event)]
-    context_events = [event for event in tool_events if classifications(event) & CONTEXT_CLASSES]
-    if not tool_events:
-        call_rate = None
-    else:
-        call_rate = round(len(context_events) / len(tool_events), 3)
-
-    if not context_events:
-        hit_rate = None
-    else:
-        successful = [event for event in context_events if event_success(event)]
-        hit_rate = round(len(successful) / len(context_events), 3)
-
-    return {"call_rate": call_rate, "hit_rate": hit_rate}
-
-
 def human_interventions(events: list[dict[str, Any]]) -> int | None:
     prompt_count = sum(1 for event in events if "user_prompt" in classifications(event))
     if prompt_count == 0:
@@ -245,16 +227,12 @@ def workflow_duration_minutes(events: list[dict[str, Any]]) -> float | None:
 
 def ensure_optional_objects(run: dict[str, Any]) -> None:
     adoption = dict(run.get("adoption", {}))
+    adoption.setdefault("candidate_ref", None)
+    adoption.setdefault("accepted_ref", None)
     adoption.setdefault("ai_generated_lines", None)
     adoption.setdefault("accepted_lines", None)
     adoption.setdefault("adoption_rate", None)
     run["adoption"] = adoption
-
-    metrics = dict(run.get("context_metrics", {}))
-    metrics.setdefault("call_rate", None)
-    metrics.setdefault("hit_rate", None)
-    metrics.setdefault("adoption_rate", None)
-    run["context_metrics"] = metrics
 
 
 def summarize_run_events(run_path: Path, *, write: bool = False) -> dict[str, Any]:
@@ -290,13 +268,6 @@ def summarize_run_events(run_path: Path, *, write: bool = False) -> dict[str, An
     process.setdefault("plan_followed", False)
     process["self_review_performed"] = self_review_performed(events)
     run["process_evidence"] = process
-
-    metrics = dict(run.get("context_metrics", {}))
-    derived_metrics = context_metrics(events)
-    metrics["call_rate"] = derived_metrics["call_rate"]
-    metrics["hit_rate"] = derived_metrics["hit_rate"]
-    metrics.setdefault("adoption_rate", None)
-    run["context_metrics"] = metrics
 
     run["event_collection"] = {
         "events_path": str(events_path),

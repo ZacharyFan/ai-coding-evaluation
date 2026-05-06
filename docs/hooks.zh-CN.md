@@ -101,10 +101,20 @@ runs/<workflow>/<task-id>/<run-id>/events.jsonl
 ```text
 source, session_id, turn_id, hook_event, model, cwd, tool_name
 action.kind, action.command_summary, action.paths, action.success
+action.result_summary.observed, empty, result_count, output_chars, line_count
+context.type, context.id, context.classification_source
 classifications
 ```
 
-采集器会脱敏常见 API key、token、password、bearer token、OpenAI 风格的 `sk-*` key 和 JWT-like 值。它不保存完整 prompt、文件内容或大段工具输出。
+采集器会脱敏常见 API key、token、password、bearer token、OpenAI 风格的 `sk-*` key 和 JWT-like 值。它不保存完整 prompt、文件内容或大段工具输出。`result_summary` 只保存元数据：是否观测到输出、是否为空，以及少量计数。它用于计算真命中率，不保存工具输出正文。
+
+context 分类保持保守：
+
+```text
+task.json context_sources -> adapter/tool metadata -> path/name heuristic -> unknown
+```
+
+benchmark 任务优先配置 `task.json.context_sources`。无法安全分类时标记为 `unknown`；错分比缺失更危险。
 
 ## 派生字段
 
@@ -131,12 +141,18 @@ process_evidence.relevant_docs_read
 process_evidence.knowledge_sources_used
 process_evidence.tools_used
 process_evidence.self_review_performed
-context_metrics.call_rate
-context_metrics.hit_rate
 event_collection
 ```
 
-`duration_minutes` 是 coding workflow 从第一条 `UserPromptSubmit` 到最后一个终止事件的墙钟耗时。未知值继续保持未知。hook 层不计算 `cost_usd`、hidden test 结果、采纳率，也不猜测 plan 是否被语义上遵循。
+`duration_minutes` 是 coding workflow 从第一条 `UserPromptSubmit` 到最后一个终止事件的墙钟耗时。未知值继续保持未知。hook 层不计算 `cost_usd`、hidden test 结果、采纳率、链路指标，也不猜测 plan 是否被语义上遵循。
+
+跨 run 链路指标由独立脚本计算：
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+该脚本只统计有非空 `events.jsonl` 的 run，并计算调用率、命中率和采纳率。
 
 ## 护栏
 

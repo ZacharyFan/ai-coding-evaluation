@@ -1,13 +1,10 @@
 {
   "adoption": {
     "accepted_lines": null,
+    "accepted_ref": null,
     "adoption_rate": null,
-    "ai_generated_lines": null
-  },
-  "context_metrics": {
-    "adoption_rate": null,
-    "call_rate": 0.4,
-    "hit_rate": 1.0
+    "ai_generated_lines": null,
+    "candidate_ref": null
   },
   "cost_usd": null,
   "diff": {

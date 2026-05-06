@@ -46,5 +46,43 @@
     "security": 10,
     "process_compliance": 5,
     "efficiency": 10
-  }
+  },
+  "context_sources": [
+    {
+      "type": "knowledge",
+      "path_globs": [
+        "docs/contexts/**"
+      ]
+    },
+    {
+      "type": "component_doc",
+      "path_globs": [
+        "docs/components/**"
+      ]
+    },
+    {
+      "type": "project_doc",
+      "path_globs": [
+        "README.md",
+        "README.zh-CN.md",
+        "AGENTS.md",
+        "docs/**/*.md"
+      ]
+    },
+    {
+      "type": "spec",
+      "path_globs": [
+        "task.md",
+        "task.zh-CN.md",
+        "specs/**"
+      ]
+    },
+    {
+      "type": "skill",
+      "path_globs": [
+        ".codex/skills/**",
+        ".claude/agents/**"
+      ]
+    }
+  ]
 }

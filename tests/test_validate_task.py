@@ -348,3 +348,39 @@ def test_local_task_allows_placeholder_solution_ref(tmp_path):
     errors = validate_task_dir(task_dir)
 
     assert errors == []
+
+
+def test_context_sources_accept_supported_types_and_repo_relative_globs(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["context_sources"] = [
+        {"type": "knowledge", "path_globs": ["docs/contexts/**"]},
+        {"type": "project_doc", "path_globs": ["README.md", "docs/**/*.md"]},
+        {"type": "component_doc", "path_globs": ["docs/components/**"]},
+        {"type": "spec", "path_globs": ["specs/**", "task.md"]},
+        {"type": "skill", "path_globs": [".codex/skills/**"]},
+        {"type": "web", "path_globs": ["docs/web/**"]},
+        {"type": "mcp", "tool_names": ["mcp__docs__search"]},
+    ]
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert errors == []
+
+
+def test_context_sources_reject_unknown_type_or_unsafe_glob(tmp_path):
+    task_dir = tmp_path / "task"
+    task = json.loads(valid_task_json())
+    task["context_sources"] = [
+        {"type": "magic", "path_globs": ["docs/**"]},
+        {"type": "knowledge", "path_globs": ["../secrets/**"]},
+        {"type": "mcp", "tool_names": [""]},
+    ]
+    write_task(task_dir, json.dumps(task, indent=2))
+
+    errors = validate_task_dir(task_dir)
+
+    assert any("context_sources.type must be one of" in error for error in errors)
+    assert any("context_sources.path_globs must be repo-relative paths" in error for error in errors)
+    assert any("context_sources.tool_names must contain only non-empty strings" in error for error in errors)

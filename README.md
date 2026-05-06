@@ -76,6 +76,27 @@ python scripts/execute_run.py \
   --write
 ```
 
+Optional adoption evidence: if you want line-level adoption metrics, have the AI workflow or reviewer commit the candidate result, then compare that candidate commit with the final accepted commit. This is a link-diagnostic metric only; it does not affect `score.json`.
+
+```bash
+cd runs/<workflow>/<task-id>/<run-id>/target
+git add .
+git commit -m "candidate for <task-id>"
+git rev-parse HEAD
+```
+
+After the final accepted version exists as a commit:
+
+```bash
+python scripts/adoption_lines.py \
+  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+  --candidate-ref <candidate-sha> \
+  --accepted-ref <accepted-sha> \
+  --write
+```
+
+`candidate_ref` is the AI candidate commit. `accepted_ref` is the final accepted commit. `target.solution_ref` remains a reference solution and is not used as the default adoption source.
+
 Optional review aid: if the task has `target.solution_ref`, inspect the candidate worktree against the reference implementation before scoring. The helper respects `task.scope.allowed_paths` when present, prints a reviewer-friendly diff view with per-file headers and line numbers, and highlights candidate-side lines with a red background and reference-side lines with a green background. This is only context for reviewers; do not score a run by similarity to the reference solution.
 
 ```bash
@@ -131,7 +152,13 @@ Generate a static comparison dashboard:
 python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
 ```
 
-`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, and per-task results. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
+Generate cross-run context link metrics from hook evidence:
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results. Link metrics require hook events; runs without non-empty `events.jsonl` are excluded from their denominator.
 
 See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
 
