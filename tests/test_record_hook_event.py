@@ -41,6 +41,23 @@ def test_codex_post_tool_use_writes_standard_event(tmp_path, monkeypatch):
     assert "tool_use" in events[0]["classifications"]
 
 
+def test_project_eval_script_is_classified_as_test_run(tmp_path):
+    event = normalize_hook_event(
+        {
+            "hook_event_name": "PostToolUse",
+            "model": "gpt-5.3-codex",
+            "tool_name": "Bash",
+            "tool_input": {"command": "./scripts/run_eval_case.sh go-feature-l3-c3"},
+            "tool_response": {"exit_code": 0},
+        },
+        "codex",
+    )
+
+    assert event["action"]["command_summary"] == "./scripts/run_eval_case.sh go-feature-l3-c3"
+    assert "test_run" in event["classifications"]
+    assert "tool_use" in event["classifications"]
+
+
 def test_claude_read_event_is_normalized_without_file_content(tmp_path):
     event = normalize_hook_event(
         {

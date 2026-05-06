@@ -65,7 +65,7 @@
 根据任务预算计算：
 
 ```text
-duration_minutes
+duration_minutes  coding workflow 墙钟耗时
 human_interventions
 cost_usd
 ```

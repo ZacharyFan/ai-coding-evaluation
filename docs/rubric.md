@@ -65,7 +65,7 @@ This is a stability signal, not a substitute for correctness. It captures whethe
 Calculated from task budgets:
 
 ```text
-duration_minutes
+duration_minutes  coding workflow wall-clock duration
 human_interventions
 cost_usd
 ```

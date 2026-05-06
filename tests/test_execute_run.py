@@ -146,6 +146,21 @@ def test_execute_run_collects_passing_test_log_diff_and_run_facts(tmp_path):
     assert "$ " in (run_dir / "test.log").read_text(encoding="utf-8")
 
 
+def test_execute_run_does_not_overwrite_existing_workflow_duration(tmp_path):
+    repo, base_ref = init_target_repo(tmp_path)
+    (repo / "value.txt").write_text("green\n", encoding="utf-8")
+    command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
+    task_path, run_path = write_task_and_run(tmp_path, repo, base_ref, command)
+    run = load_json(run_path)
+    run["duration_minutes"] = 4.25
+    write_json(run_path, run)
+
+    result = execute_run(task_path, run_path, write=True)
+
+    assert result["duration_minutes"] == 4.25
+    assert load_json(run_path)["duration_minutes"] == 4.25
+
+
 def test_execute_run_summarizes_hook_events_when_present(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
@@ -156,6 +171,27 @@ def test_execute_run_summarizes_hook_events_when_present(tmp_path):
         {
             "schema_version": "1",
             "timestamp": "2026-05-02T00:00:00Z",
+            "source": "codex",
+            "session_id": "s1",
+            "turn_id": "t1",
+            "hook_event": "UserPromptSubmit",
+            "model": "gpt-5.5",
+            "cwd": str(repo),
+            "tool_name": None,
+            "action": {
+                "kind": "lifecycle",
+                "command_summary": "user_prompt_chars=100",
+                "paths": [],
+                "success": None,
+            },
+            "classifications": ["user_prompt"],
+        },
+    )
+    append_event(
+        run_path.parent / "events.jsonl",
+        {
+            "schema_version": "1",
+            "timestamp": "2026-05-02T00:01:00Z",
             "source": "codex",
             "session_id": "s1",
             "turn_id": "t1",
@@ -172,13 +208,35 @@ def test_execute_run_summarizes_hook_events_when_present(tmp_path):
             "classifications": ["tool_use", "read_docs"],
         },
     )
+    append_event(
+        run_path.parent / "events.jsonl",
+        {
+            "schema_version": "1",
+            "timestamp": "2026-05-02T00:04:15Z",
+            "source": "codex",
+            "session_id": "s1",
+            "turn_id": "t1",
+            "hook_event": "Stop",
+            "model": "gpt-5.5",
+            "cwd": str(repo),
+            "tool_name": None,
+            "action": {
+                "kind": "lifecycle",
+                "command_summary": "assistant_message_chars=200",
+                "paths": [],
+                "success": None,
+            },
+            "classifications": [],
+        },
+    )
 
     execute_run(task_path, run_path, write=True)
 
     run = load_json(run_path)
     assert run["model"] == "gpt-5.5"
+    assert run["duration_minutes"] == 4.25
     assert run["process_evidence"]["project_instructions_read"] is True
-    assert run["event_collection"]["event_count"] == 1
+    assert run["event_collection"]["event_count"] == 3
 
 
 def test_execute_run_uses_prepared_worktree_from_run_json(tmp_path):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -10,10 +11,20 @@ from typing import Any
 
 CONTEXT_CLASSES = {"read_docs", "web_context"}
 INSTRUCTION_FILENAMES = {"agents.md", "claude.md", "readme.md", "readme.zh-cn.md"}
+RUN_EVAL_CASE_PATTERN = re.compile(r"(^|\s)(?:\./)?scripts/run_eval_case\.sh(\s|$)")
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -144,16 +155,25 @@ def self_review_performed(events: list[dict[str, Any]]) -> bool:
         return False
     for event in events[last_edit_index + 1 :]:
         classes = classifications(event)
-        if "test_run" in classes or "diff_review" in classes:
+        if is_test_run_event(event) or "diff_review" in classes:
             return True
     return False
+
+
+def is_test_run_event(event: dict[str, Any]) -> bool:
+    return "test_run" in classifications(event) or bool(RUN_EVAL_CASE_PATTERN.search(tool_summary(event)))
 
 
 def model_fields(events: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
     models = unique([str(event.get("model")) for event in events if event.get("model")])
     if not models:
         return None, []
-    return models[0], models
+    tool_models = [str(event.get("model")) for event in events if event.get("model") and "tool_use" in classifications(event)]
+    if not tool_models:
+        return models[0], models
+    counts = {model: tool_models.count(model) for model in unique(tool_models)}
+    primary = max(unique(tool_models), key=lambda model: counts[model])
+    return primary, models
 
 
 def context_metrics(events: list[dict[str, Any]]) -> dict[str, float | None]:
@@ -182,6 +202,45 @@ def human_interventions(events: list[dict[str, Any]]) -> int | None:
 
 def permission_requests(events: list[dict[str, Any]]) -> int:
     return sum(1 for event in events if "permission_request" in classifications(event))
+
+
+def event_timestamp(event: dict[str, Any]) -> datetime | None:
+    return parse_timestamp(event.get("timestamp"))
+
+
+def terminal_timestamp(events: list[dict[str, Any]], hook_event: str) -> datetime | None:
+    for event in reversed(events):
+        if event.get("hook_event") != hook_event:
+            continue
+        timestamp = event_timestamp(event)
+        if timestamp is not None:
+            return timestamp
+    return None
+
+
+def last_valid_timestamp(events: list[dict[str, Any]]) -> datetime | None:
+    for event in reversed(events):
+        timestamp = event_timestamp(event)
+        if timestamp is not None:
+            return timestamp
+    return None
+
+
+def workflow_duration_minutes(events: list[dict[str, Any]]) -> float | None:
+    start: datetime | None = None
+    for event in events:
+        if event.get("hook_event") != "UserPromptSubmit":
+            continue
+        start = event_timestamp(event)
+        if start is not None:
+            break
+    if start is None:
+        return None
+
+    end = terminal_timestamp(events, "SessionEnd") or terminal_timestamp(events, "Stop") or last_valid_timestamp(events)
+    if end is None or end < start:
+        return None
+    return round((end - start).total_seconds() / 60, 3)
 
 
 def ensure_optional_objects(run: dict[str, Any]) -> None:
@@ -214,6 +273,10 @@ def summarize_run_events(run_path: Path, *, write: bool = False) -> dict[str, An
     interventions = human_interventions(events)
     if interventions is not None:
         run["human_interventions"] = interventions
+
+    duration = workflow_duration_minutes(events)
+    if duration is not None:
+        run["duration_minutes"] = duration
 
     run["permission_requests"] = permission_requests(events)
 

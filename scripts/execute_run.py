@@ -6,7 +6,6 @@ import fnmatch
 import json
 import subprocess
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
@@ -204,9 +203,7 @@ def execute_run(
         checkout_base(target_repo, base_ref)
 
     commands = list(target.get("setup_commands", [])) + list(target.get("test_commands", []))
-    started = time.monotonic()
     required_passed, test_output = run_shell_commands(commands, working_directory)
-    duration_minutes = round((time.monotonic() - started) / 60, 3)
 
     diff = diff_text(target_repo, base_ref)
     changed = changed_files(target_repo, base_ref)
@@ -214,7 +211,6 @@ def execute_run(
     scope_result = scope_check_result(task, changed)
 
     result = {
-        "duration_minutes": duration_minutes,
         "tests": {
             "required_passed": required_passed,
             "hidden_passed": run.get("tests", {}).get("hidden_passed"),

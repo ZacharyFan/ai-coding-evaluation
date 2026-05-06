@@ -23,7 +23,7 @@ def esc(value: Any) -> str:
 
 
 def json_for_script(value: Any) -> str:
-    payload = json.dumps(value, ensure_ascii=True, sort_keys=True)
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
     return payload.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
 
 
@@ -242,7 +242,7 @@ HTML_TEMPLATE = """<!doctype html>
       cursor: pointer;
     }
     select:hover { border-color: var(--line-strong); }
-    select:focus-visible, input:focus-visible, th:focus-visible {
+    select:focus-visible, input:focus-visible, th:focus-visible, .info-icon:focus-visible {
       outline: 3px solid rgba(59, 130, 246, 0.28);
       outline-offset: 2px;
     }
@@ -270,6 +270,54 @@ HTML_TEMPLATE = """<!doctype html>
       z-index: 1;
       text-transform: uppercase;
     }
+    .th-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .info-wrap { display: inline-flex; align-items: center; text-transform: none; }
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: #eef4ff;
+      color: var(--blue-text);
+      cursor: help;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      padding: 0;
+    }
+    .info-icon:hover { border-color: #93b4e8; background: var(--blue-soft); }
+    .floating-tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+      width: max-content;
+      max-width: min(280px, calc(100vw - 24px));
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 9px 10px;
+      text-align: left;
+      text-transform: none;
+      white-space: normal;
+    }
+    .floating-tooltip.is-visible { opacity: 1; visibility: visible; }
     tbody tr:nth-child(even) { background: #fbfdff; }
     tbody tr:hover { background: #eff6ff; }
     .compact td, .compact th { white-space: nowrap; }
@@ -372,9 +420,11 @@ HTML_TEMPLATE = """<!doctype html>
 
   <script id="runs-data" type="application/json">%%DATA%%</script>
   <script id="dashboard-labels" type="application/json">%%LABELS%%</script>
+  <div id="floatingTooltip" class="floating-tooltip" role="tooltip" aria-hidden="true"></div>
   <script>
     const allRuns = JSON.parse(document.getElementById("runs-data").textContent);
     const labels = JSON.parse(document.getElementById("dashboard-labels").textContent);
+    const floatingTooltip = document.getElementById("floatingTooltip");
     const filters = [
       ["taskFilter", "task_id"],
       ["workflowFilter", "workflow_id"],
@@ -474,6 +524,61 @@ HTML_TEMPLATE = """<!doctype html>
       return "score-low";
     }
 
+    function columnLabel(column) {
+      return typeof column === "object" && column !== null ? column.label : column;
+    }
+
+    function columnHelp(column) {
+      return typeof column === "object" && column !== null ? column.help : "";
+    }
+
+    function headerCell(column) {
+      const label = columnLabel(column);
+      const help = columnHelp(column);
+      if (!help) return '<th><span class="th-label">' + escapeHtml(label) + '</span></th>';
+      return '<th><span class="th-label">' +
+        escapeHtml(label) +
+        '<span class="info-wrap">' +
+        '<button class="info-icon" type="button" aria-describedby="floatingTooltip" aria-label="' + escapeHtml(labels.js.calculation_help + ': ' + label) + '" data-tooltip-help="' + escapeHtml(help) + '">i</button>' +
+        '</span>' +
+        '</span></th>';
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function positionTooltip(trigger) {
+      const margin = 12;
+      const gap = 8;
+      const triggerRect = trigger.getBoundingClientRect();
+      const tooltipRect = floatingTooltip.getBoundingClientRect();
+      const left = clamp(
+        triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2,
+        margin,
+        Math.max(margin, window.innerWidth - tooltipRect.width - margin)
+      );
+      const below = triggerRect.bottom + gap;
+      const above = triggerRect.top - tooltipRect.height - gap;
+      const top = below + tooltipRect.height + margin <= window.innerHeight ? below : Math.max(margin, above);
+      floatingTooltip.style.left = left + "px";
+      floatingTooltip.style.top = top + "px";
+    }
+
+    function showTooltip(trigger) {
+      const help = trigger.dataset.tooltipHelp;
+      if (!help) return;
+      floatingTooltip.textContent = help;
+      floatingTooltip.setAttribute("aria-hidden", "false");
+      floatingTooltip.classList.add("is-visible");
+      positionTooltip(trigger);
+    }
+
+    function hideTooltip() {
+      floatingTooltip.classList.remove("is-visible");
+      floatingTooltip.setAttribute("aria-hidden", "true");
+    }
+
     function renderMetrics(runs) {
       const summary = summarize(runs);
       const cards = [
@@ -492,7 +597,10 @@ HTML_TEMPLATE = """<!doctype html>
     function renderHeatmap(runs) {
       const tasks = Array.from(new Set(runs.map((run) => run.task_id).filter(Boolean))).sort();
       const workflows = Array.from(new Set(runs.map((run) => run.workflow_id).filter(Boolean))).sort();
-      const header = '<thead><tr><th>' + escapeHtml(labels.filters.task) + '</th>' + workflows.map((workflow) => '<th>' + escapeHtml(workflow) + '</th>').join("") + '</tr></thead>';
+      const header = '<thead><tr>' +
+        headerCell({label: labels.filters.task}) +
+        workflows.map((workflow) => headerCell({label: workflow, help: labels.heatmap_workflow_header_help})).join("") +
+        '</tr></thead>';
       const body = tasks.map((task) => {
         const cells = workflows.map((workflow) => {
           const items = runs.filter((run) => run.task_id === task && run.workflow_id === workflow && scored(run));
@@ -527,7 +635,7 @@ HTML_TEMPLATE = """<!doctype html>
           '</tr>';
       }).join("");
       document.getElementById(elementId).innerHTML =
-        '<thead><tr>' + labels.comparison_headers.map((header) => '<th>' + escapeHtml(header) + '</th>').join("") + '</tr></thead>' +
+        '<thead><tr>' + labels.comparison_headers.map(headerCell).join("") + '</tr></thead>' +
         '<tbody>' + rows + '</tbody>';
     }
 
@@ -600,8 +708,12 @@ HTML_TEMPLATE = """<!doctype html>
     document.getElementById("scoredOnly").addEventListener("change", renderAll);
     document.querySelectorAll("#runsTable th").forEach((header, index) => {
       header.tabIndex = 0;
-      header.addEventListener("click", () => sortTable(index));
+      header.addEventListener("click", (event) => {
+        if (event.target.closest(".info-icon")) return;
+        sortTable(index);
+      });
       header.addEventListener("keydown", (event) => {
+        if (event.target.closest(".info-icon")) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           sortTable(index);
@@ -609,6 +721,25 @@ HTML_TEMPLATE = """<!doctype html>
       });
       header.style.cursor = "pointer";
     });
+    document.addEventListener("scroll", hideTooltip, true);
+    document.addEventListener("mouseover", (event) => {
+      const trigger = event.target.closest(".info-icon");
+      if (trigger) showTooltip(trigger);
+    });
+    document.addEventListener("mouseout", (event) => {
+      if (event.target.closest(".info-icon")) hideTooltip();
+    });
+    document.addEventListener("focusin", (event) => {
+      const trigger = event.target.closest(".info-icon");
+      if (trigger) showTooltip(trigger);
+    });
+    document.addEventListener("focusout", (event) => {
+      if (event.target.closest(".info-icon")) hideTooltip();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") hideTooltip();
+    });
+    window.addEventListener("resize", hideTooltip);
     renderAll();
   </script>
 </body>
@@ -616,8 +747,36 @@ HTML_TEMPLATE = """<!doctype html>
 """
 
 
+def column_label(column: Any) -> str:
+    if isinstance(column, dict):
+        return str(column.get("label", ""))
+    return str(column)
+
+
+def column_help(column: Any) -> str:
+    if isinstance(column, dict):
+        return str(column.get("help") or "")
+    return ""
+
+
+def header_cell_html(column: Any, labels: dict[str, Any]) -> str:
+    label = column_label(column)
+    help_text = column_help(column)
+    if not help_text:
+        return f'<th><span class="th-label">{esc(label)}</span></th>'
+    aria_label = f'{labels["js"]["calculation_help"]}: {label}'
+    return (
+        '<th><span class="th-label">'
+        f"{esc(label)}"
+        '<span class="info-wrap">'
+        f'<button class="info-icon" type="button" aria-describedby="floatingTooltip" aria-label="{esc(aria_label)}" data-tooltip-help="{esc(help_text)}">i</button>'
+        "</span>"
+        "</span></th>"
+    )
+
+
 def run_header_html(labels: dict[str, Any]) -> str:
-    return "\n              ".join(f"<th>{esc(header)}</th>" for header in labels["run_headers"])
+    return "\n              ".join(header_cell_html(header, labels) for header in labels["run_headers"])
 
 
 def zh_output_path(output: Path) -> Path:

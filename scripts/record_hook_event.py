@@ -39,7 +39,7 @@ SHELL_TOOLS = {"bash", "shell"}
 WEB_TOOLS = {"webfetch", "websearch", "web_search"}
 TEST_COMMAND_PATTERN = re.compile(
     r"(^|\s)(go test|pytest|python -m pytest|npm test|pnpm test|yarn test|cargo test|mvn test|gradle test|"
-    r"jest|vitest|unittest|lint|typecheck|build)(\s|$)"
+    r"jest|vitest|unittest|lint|typecheck|build|(?:\./)?scripts/run_eval_case\.sh)(\s|$)"
 )
 DIFF_COMMAND_PATTERN = re.compile(r"(^|\s)git\s+(diff|status|show)(\s|$)")
 PATH_KEY_PATTERN = re.compile(r"(^|_)(file|path|cwd|directory)(_|$)", re.IGNORECASE)

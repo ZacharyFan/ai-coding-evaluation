@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from scripts.dashboard import dashboard_html, zh_output_path
+from scripts.dashboard_i18n import LOCALES
 from scripts.report_data import collect_runs, summarize_runs
 
 
@@ -146,6 +147,28 @@ def test_dashboard_html_escapes_values_and_avoids_frontend_leaks(tmp_path):
     assert "Model Comparison" in html
 
 
+def test_dashboard_table_headers_include_calculation_tooltips(tmp_path):
+    write_task(tmp_path)
+    write_run(
+        tmp_path,
+        "baseline",
+        "task",
+        "demo",
+        {},
+        {"score": 100, "raw_score": 100, "attention_adjusted_score": 100, "hard_gates": []},
+    )
+    runs = collect_runs(tmp_path / "runs", tmp_path / "benchmarks" / "tasks")
+
+    html = dashboard_html(runs)
+
+    assert "info-icon" in html
+    assert 'id="floatingTooltip"' in html
+    assert "data-tooltip-help" in html
+    assert "Final score after hard gates" in html
+    assert "Each cell aggregates scored runs" in html
+    assert "attention_adjusted_score = score / max(1, human_interventions)" in html
+
+
 def test_dashboard_html_supports_chinese_locale(tmp_path):
     write_task(tmp_path)
     write_run(
@@ -165,8 +188,32 @@ def test_dashboard_html_supports_chinese_locale(tmp_path):
     assert "任务 × 工作流热力图" in html
     assert "模型对比" in html
     assert "仅看已评分" in html
+    assert "info-icon" in html
+    assert "最终分 = 原始分经过 hard gate 封顶后的结果" in html
+    assert "每个单元格聚合当前筛选条件下同一任务、同一工作流的已评分 run" in html
     assert "undefined" not in html
     assert "None" not in html
+
+
+def test_dashboard_tooltip_text_is_escaped(tmp_path, monkeypatch):
+    write_task(tmp_path)
+    write_run(
+        tmp_path,
+        "baseline",
+        "task",
+        "demo",
+        {},
+        {"score": 100, "raw_score": 100, "attention_adjusted_score": 100, "hard_gates": []},
+    )
+    runs = collect_runs(tmp_path / "runs", tmp_path / "benchmarks" / "tasks")
+    labels = json.loads(json.dumps(LOCALES["en"]))
+    labels["run_headers"][8]["help"] = '<img src=x onerror="alert(1)">'
+    monkeypatch.setitem(LOCALES, "test", labels)
+
+    html = dashboard_html(runs, "test")
+
+    assert '<img src=x onerror="alert(1)">' not in html
+    assert "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;" in html
 
 
 def test_zh_output_path_adds_locale_suffix():

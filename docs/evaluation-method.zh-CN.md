@@ -104,7 +104,7 @@ run.json        评分前事实和 coding process evidence
 score.json      review 分、hard gates 和最终分
 ```
 
-`prepare_run.py` 创建这组证据骨架，把 coding task prompt 复制到 run 目录，并把目标仓库 clone 到隔离的 run worktree。`acceptance.md` 不会被复制，因为它是 reviewer-only 文件。`execute_run.py` 执行目标项目的 setup/test 命令，写入 `test.log`，写入 `diff.patch`，并更新 `run.json`。可选 hooks 会把过程事件追加到 `events.jsonl`；`summarize_run_events.py` 会从这些事件派生过程证据。人工 reviewer 通过 `score_run.py --set-review` 传入 `review.*` 分数，也可以用 `llm_review_run.py` 调用 OpenAI-compatible LLM 生成 review 维度。`score_run.py` 计算最终评分字段，并写入 `derived_hard_gates` 和最终合并后的 `hard_gates`。
+`prepare_run.py` 创建这组证据骨架，把 coding task prompt 复制到 run 目录，并把目标仓库 clone 到隔离的 run worktree。`acceptance.md` 不会被复制，因为它是 reviewer-only 文件。`execute_run.py` 执行目标项目的 setup/test 命令，写入 `test.log`，写入 `diff.patch`，并更新 `run.json` 中机械测试和 diff 事实。可选 hooks 会把过程事件追加到 `events.jsonl`；`summarize_run_events.py` 会从这些事件派生过程证据和 coding workflow 墙钟 `duration_minutes`。没有 hooks 时，`duration_minutes` 是人工维护的 run 事实。人工 reviewer 通过 `score_run.py --set-review` 传入 `review.*` 分数，也可以用 `llm_review_run.py` 调用 OpenAI-compatible LLM 生成 review 维度。`score_run.py` 计算最终评分字段，并写入 `derived_hard_gates` 和最终合并后的 `hard_gates`。
 
 当 `task.json` 定义 `scope.allowed_paths` 时，`execute_run.py` 会把已跟踪变更文件和 untracked 新文件一起与 allowlist 对比，并写入 `run.json.diff.scope_check=path_allowlist`、`unrelated_files_changed` 和 `unrelated_files`。如果没有 `scope`，无关文件状态是未知，而不是默认干净。
 

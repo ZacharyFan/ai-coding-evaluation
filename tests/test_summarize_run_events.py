@@ -49,6 +49,7 @@ def base_run() -> dict:
 def event(
     hook_event: str,
     *,
+    timestamp: str = "2026-05-02T00:00:00Z",
     source: str = "codex",
     model: str = "gpt-5.5",
     tool_name: str | None = None,
@@ -59,7 +60,7 @@ def event(
 ) -> dict:
     return {
         "schema_version": "1",
-        "timestamp": "2026-05-02T00:00:00Z",
+        "timestamp": timestamp,
         "source": source,
         "session_id": "s1",
         "turn_id": "t1",
@@ -134,6 +135,68 @@ def test_summarizes_docs_tools_self_review_and_context_metrics(tmp_path):
     assert json.loads(run_path.read_text(encoding="utf-8"))["event_collection"]["sources"] == ["codex"]
 
 
+def test_uses_most_common_tool_model_as_primary_model(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, base_run())
+    append_event(events_path, event("SessionStart", model="gpt-5.5"))
+    append_event(events_path, event("UserPromptSubmit", model="gpt-5.5", classifications=["user_prompt"]))
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            model="gpt-5.3-codex",
+            tool_name="Bash",
+            command_summary="sed -n '1,120p' main.go",
+            classifications=["tool_use"],
+        ),
+    )
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            model="gpt-5.3-codex",
+            tool_name="Bash",
+            command_summary="go test ./...",
+            classifications=["tool_use", "test_run"],
+        ),
+    )
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["model"] == "gpt-5.3-codex"
+    assert updated["models_used"] == ["gpt-5.5", "gpt-5.3-codex"]
+
+
+def test_project_eval_script_counts_as_self_review_for_existing_events(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, base_run())
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            tool_name="apply_patch",
+            command_summary="apply_patch",
+            paths=["main.go"],
+            classifications=["tool_use", "code_edit"],
+        ),
+    )
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            tool_name="Bash",
+            command_summary="./scripts/run_eval_case.sh go-feature-l3-c3",
+            classifications=["tool_use"],
+        ),
+    )
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["process_evidence"]["self_review_performed"] is True
+
+
 def test_human_interventions_count_excludes_initial_prompt(tmp_path):
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
@@ -146,6 +209,85 @@ def test_human_interventions_count_excludes_initial_prompt(tmp_path):
 
     assert updated["human_interventions"] == 1
     assert updated["permission_requests"] == 1
+
+
+def test_duration_uses_first_prompt_to_last_stop_across_models(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, {**base_run(), "duration_minutes": 99})
+    append_event(events_path, event("SessionStart", timestamp="2026-05-02T00:00:00Z", model="gpt-5.5"))
+    append_event(
+        events_path,
+        event(
+            "UserPromptSubmit",
+            timestamp="2026-05-02T00:00:14Z",
+            model="gpt-5.5",
+            classifications=["user_prompt"],
+        ),
+    )
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            timestamp="2026-05-02T00:01:00Z",
+            model="gpt-5.3-codex",
+            tool_name="Bash",
+            command_summary="go test ./...",
+            classifications=["tool_use", "test_run"],
+        ),
+    )
+    append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:29Z", model="gpt-5.3-codex"))
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["model"] == "gpt-5.3-codex"
+    assert updated["duration_minutes"] == 4.25
+
+
+def test_duration_prefers_last_session_end_when_available(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, {**base_run(), "duration_minutes": 99})
+    append_event(events_path, event("UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]))
+    append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:00Z"))
+    append_event(events_path, event("SessionEnd", timestamp="2026-05-02T00:05:30Z"))
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["duration_minutes"] == 5.5
+
+
+def test_duration_falls_back_to_last_valid_event_without_terminal_event(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, {**base_run(), "duration_minutes": 99})
+    append_event(events_path, event("UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]))
+    append_event(
+        events_path,
+        event(
+            "PostToolUse",
+            timestamp="2026-05-02T00:03:30Z",
+            tool_name="Bash",
+            command_summary="go test ./...",
+            classifications=["tool_use", "test_run"],
+        ),
+    )
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["duration_minutes"] == 3.5
+
+
+def test_duration_without_prompt_preserves_existing_value(tmp_path):
+    run_path = tmp_path / "run.json"
+    events_path = tmp_path / "events.jsonl"
+    write_json(run_path, {**base_run(), "duration_minutes": 12.5})
+    append_event(events_path, event("PostToolUse", timestamp="2026-05-02T00:03:30Z", classifications=["tool_use"]))
+    append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:00Z"))
+
+    updated = summarize_run_events(run_path)
+
+    assert updated["duration_minutes"] == 12.5
 
 
 def test_no_events_does_not_pollute_run(tmp_path):
