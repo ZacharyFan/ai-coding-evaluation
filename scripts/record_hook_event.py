@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -37,6 +38,7 @@ EDIT_TOOLS = {"edit", "write", "multiedit", "apply_patch"}
 READ_TOOLS = {"read", "grep", "glob", "ls"}
 SHELL_TOOLS = {"bash", "shell"}
 WEB_TOOLS = {"webfetch", "websearch", "web_search"}
+CONTEXT_SOURCE_TYPES = {"spec", "project_doc", "knowledge", "component_doc", "skill", "web", "mcp", "unknown"}
 TEST_COMMAND_PATTERN = re.compile(
     r"(^|\s)(go test|pytest|python -m pytest|npm test|pnpm test|yarn test|cargo test|mvn test|gradle test|"
     r"jest|vitest|unittest|lint|typecheck|build|(?:\./)?scripts/run_eval_case\.sh)(\s|$)"
@@ -133,18 +135,173 @@ def path_basename(path: str) -> str:
     return path.replace("\\", "/").rstrip("/").split("/")[-1].lower()
 
 
+def normalized_path(path: str) -> str:
+    return path.replace("\\", "/").strip()
+
+
 def is_acceptance_path(path: str) -> bool:
     return path_basename(path) == "acceptance.md"
 
 
 def is_doc_path(path: str) -> bool:
-    normalized = path.replace("\\", "/").lower()
+    normalized = normalized_path(path).lower()
     return (
         path_basename(path) in DOC_FILENAMES
         or normalized.startswith("docs/")
         or "/docs/" in normalized
         or normalized.endswith("/docs")
     )
+
+
+def is_context_class(classes: list[str]) -> bool:
+    return any(value in {"read_docs", "web_context"} for value in classes)
+
+
+def output_text_from_response(tool_response: Any) -> str | None:
+    if isinstance(tool_response, str):
+        return redact_secrets(tool_response)
+    if not isinstance(tool_response, dict):
+        return None
+    for key in ("stdout", "output", "content", "text", "body"):
+        value = tool_response.get(key)
+        if isinstance(value, str):
+            return redact_secrets(value)
+    return None
+
+
+def list_result_from_response(tool_response: Any) -> list[Any] | None:
+    if isinstance(tool_response, list):
+        return tool_response
+    if not isinstance(tool_response, dict):
+        return None
+    for key in ("results", "items", "data", "matches"):
+        value = tool_response.get(key)
+        if isinstance(value, list):
+            return value
+    return None
+
+
+def result_summary(tool_response: Any, command_summary_value: str) -> dict[str, Any]:
+    text = output_text_from_response(tool_response)
+    if text is not None:
+        stripped = text.strip()
+        lines = [line for line in stripped.splitlines() if line.strip()]
+        is_search = bool(re.search(r"(^|\s)(rg|grep|find|search)(\s|$)", command_summary_value.lower()))
+        return {
+            "observed": True,
+            "empty": not bool(stripped),
+            "result_count": len(lines) if is_search else None,
+            "output_chars": len(text),
+            "line_count": len(lines),
+            "summary": "empty_text" if not stripped else "non_empty_text",
+        }
+
+    result_list = list_result_from_response(tool_response)
+    if result_list is not None:
+        return {
+            "observed": True,
+            "empty": len(result_list) == 0,
+            "result_count": len(result_list),
+            "output_chars": None,
+            "line_count": None,
+            "summary": "empty_list" if not result_list else "json_list",
+        }
+
+    if isinstance(tool_response, dict):
+        meaningful_keys = [key for key in tool_response if key not in {"success", "ok", "exit_code", "exitCode", "returncode"}]
+        if meaningful_keys:
+            return {
+                "observed": True,
+                "empty": False,
+                "result_count": None,
+                "output_chars": None,
+                "line_count": None,
+                "summary": "json_object",
+            }
+
+    return {
+        "observed": False,
+        "empty": True,
+        "result_count": None,
+        "output_chars": None,
+        "line_count": None,
+        "summary": "not_observed",
+    }
+
+
+def path_matches_glob(path: str, pattern: str) -> bool:
+    normalized = normalized_path(path).lstrip("./")
+    normalized_pattern = normalized_path(pattern).lstrip("./")
+    if fnmatch.fnmatch(normalized, normalized_pattern):
+        return True
+    return normalized.endswith("/" + normalized_pattern.rstrip("*")) or fnmatch.fnmatch(normalized.split("/target/", 1)[-1], normalized_pattern)
+
+
+def configured_context(
+    paths: list[str],
+    tool_name: str | None,
+    context_sources: list[dict[str, Any]] | None,
+) -> dict[str, str] | None:
+    if not context_sources:
+        return None
+    tool = tool_name or ""
+    for source in context_sources:
+        source_type = str(source.get("type") or "")
+        if source_type not in CONTEXT_SOURCE_TYPES - {"unknown"}:
+            continue
+        for pattern in source.get("path_globs") or []:
+            if not isinstance(pattern, str):
+                continue
+            for path in paths:
+                if path_matches_glob(path, pattern):
+                    return {"type": source_type, "id": normalized_path(path), "classification_source": "configured"}
+        for configured_tool in source.get("tool_names") or []:
+            if isinstance(configured_tool, str) and configured_tool == tool:
+                return {"type": source_type, "id": tool, "classification_source": "configured"}
+    return None
+
+
+def heuristic_context_type(path: str) -> str | None:
+    normalized = normalized_path(path).lower()
+    basename = path_basename(path)
+    if "/docs/contexts/" in normalized or normalized.startswith("docs/contexts/"):
+        return "knowledge"
+    if "/docs/components/" in normalized or normalized.startswith("docs/components/"):
+        return "component_doc"
+    if "/skills/" in normalized or "/.codex/skills/" in normalized or "/.claude/agents/" in normalized:
+        return "skill"
+    if normalized.startswith("specs/") or "/specs/" in normalized or basename in {"task.md", "task.zh-cn.md"}:
+        return "spec"
+    if is_doc_path(path):
+        return "project_doc"
+    return None
+
+
+def context_metadata(
+    tool_name: str | None,
+    summary: str,
+    paths: list[str],
+    classes: list[str],
+    context_sources: list[dict[str, Any]] | None,
+) -> dict[str, str] | None:
+    configured = configured_context(paths, tool_name, context_sources)
+    if configured:
+        return configured
+
+    key = tool_key(tool_name)
+    if "web_context" in classes:
+        return {"type": "web", "id": short_text(summary or tool_name or "web"), "classification_source": "adapter"}
+    if key.startswith("mcp__"):
+        return {"type": "mcp", "id": tool_name or "mcp", "classification_source": "adapter"}
+
+    for path in paths:
+        context_type = heuristic_context_type(path)
+        if context_type:
+            return {"type": context_type, "id": normalized_path(path), "classification_source": "heuristic"}
+
+    if is_context_class(classes):
+        return {"type": "unknown", "id": short_text(summary or tool_name or "unknown"), "classification_source": "unknown"}
+    return None
 
 
 def command_from_input(tool_input: Any) -> str:
@@ -241,7 +398,13 @@ def classify(tool_name: str | None, hook_event: str, summary: str, paths: list[s
     return unique(classes)
 
 
-def normalize_hook_event(raw: dict[str, Any], adapter: str, *, blocked: bool = False) -> dict[str, Any]:
+def normalize_hook_event(
+    raw: dict[str, Any],
+    adapter: str,
+    *,
+    blocked: bool = False,
+    context_sources: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     hook_event = str(raw.get("hook_event_name") or raw.get("hookEventName") or "")
     tool_name = raw.get("tool_name")
     tool_input = raw.get("tool_input", {})
@@ -254,11 +417,12 @@ def normalize_hook_event(raw: dict[str, Any], adapter: str, *, blocked: bool = F
         "command_summary": summary,
         "paths": paths,
         "success": success,
+        "result_summary": result_summary(raw.get("tool_response"), summary),
     }
     if blocked:
         action["blocked"] = True
 
-    return {
+    event = {
         "schema_version": "1",
         "timestamp": utc_now(),
         "source": adapter,
@@ -271,6 +435,30 @@ def normalize_hook_event(raw: dict[str, Any], adapter: str, *, blocked: bool = F
         "action": action,
         "classifications": classifications,
     }
+    context = context_metadata(tool_name, summary, paths, classifications, context_sources)
+    if context:
+        event["context"] = context
+    return event
+
+
+def load_context_sources(run_dir: Path) -> list[dict[str, Any]]:
+    repo_root = Path(os.environ.get("AI_EVAL_REPO", "")).expanduser()
+    run_path = run_dir / "run.json"
+    if not repo_root or not run_path.exists():
+        return []
+    try:
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+        task_id = run.get("task_id")
+        if not isinstance(task_id, str) or not task_id:
+            return []
+        task_path = repo_root / "benchmarks" / "tasks" / task_id / "task.json"
+        if not task_path.exists():
+            return []
+        task = json.loads(task_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    sources = task.get("context_sources")
+    return sources if isinstance(sources, list) else []
 
 
 def should_block_acceptance(event: dict[str, Any]) -> bool:
@@ -313,14 +501,16 @@ def deny_output(adapter: str, reason: str) -> str:
 
 
 def handle_hook_event(raw: dict[str, Any], adapter: str) -> str:
-    event = normalize_hook_event(raw, adapter)
+    run_dir_value = os.environ.get("AI_EVAL_RUN_DIR")
+    run_dir = Path(run_dir_value).expanduser() if run_dir_value else None
+    context_sources = load_context_sources(run_dir) if run_dir else []
+    event = normalize_hook_event(raw, adapter, context_sources=context_sources)
     blocked = should_block_acceptance(event)
     if blocked:
-        event = normalize_hook_event(raw, adapter, blocked=True)
+        event = normalize_hook_event(raw, adapter, blocked=True, context_sources=context_sources)
 
-    run_dir_value = os.environ.get("AI_EVAL_RUN_DIR")
-    if run_dir_value:
-        append_event(Path(run_dir_value).expanduser(), event)
+    if run_dir:
+        append_event(run_dir, event)
 
     if blocked:
         return deny_output(adapter, "acceptance.md is review-only evidence and cannot be read during coding.")

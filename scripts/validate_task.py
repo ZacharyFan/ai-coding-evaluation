@@ -24,6 +24,7 @@ OBSOLETE_TASK_KEYS = {"difficulty", "scoring"}
 EFFORT_SIZES = {"small", "medium", "large"}
 BUSINESS_COMPLEXITIES = {"L1_standardized", "L2_linked", "L3_complex"}
 CONTEXT_MATURITIES = {"C1_complete", "C2_partial", "C3_missing"}
+CONTEXT_SOURCE_TYPES = {"spec", "project_doc", "knowledge", "component_doc", "skill", "web", "mcp"}
 
 REQUIRED_SCORING_WEIGHT_KEYS = {
     "correctness",
@@ -161,6 +162,39 @@ def validate_task_dir(task_dir: Path) -> list[str]:
 
         if any(isinstance(path, str) and not is_repo_relative_scope_path(path) for path in allowed_paths):
             errors.append(f"{task_json}: scope.allowed_paths must be repo-relative paths")
+
+    context_sources = task.get("context_sources")
+    if context_sources is not None:
+        if not isinstance(context_sources, list):
+            errors.append(f"{task_json}: context_sources must be a list")
+            context_sources = []
+
+        for source in context_sources:
+            if not isinstance(source, dict):
+                errors.append(f"{task_json}: context_sources entries must be objects")
+                continue
+
+            if source.get("type") not in CONTEXT_SOURCE_TYPES:
+                errors.append(
+                    f"{task_json}: context_sources.type must be one of: "
+                    f"{', '.join(sorted(CONTEXT_SOURCE_TYPES))}"
+                )
+
+            path_globs = source.get("path_globs", [])
+            if path_globs and not isinstance(path_globs, list):
+                errors.append(f"{task_json}: context_sources.path_globs must be a list when present")
+                path_globs = []
+            if not all(isinstance(path, str) and path.strip() for path in path_globs):
+                errors.append(f"{task_json}: context_sources.path_globs must contain only non-empty strings")
+            if any(isinstance(path, str) and not is_repo_relative_scope_path(path) for path in path_globs):
+                errors.append(f"{task_json}: context_sources.path_globs must be repo-relative paths")
+
+            tool_names = source.get("tool_names", [])
+            if tool_names and not isinstance(tool_names, list):
+                errors.append(f"{task_json}: context_sources.tool_names must be a list when present")
+                tool_names = []
+            if not all(isinstance(tool, str) and tool.strip() for tool in tool_names):
+                errors.append(f"{task_json}: context_sources.tool_names must contain only non-empty strings")
 
     target = task.get("target")
     if target is not None:

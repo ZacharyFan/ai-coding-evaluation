@@ -114,9 +114,28 @@ For v0.2, `run.json` may also preserve optional diagnostic evidence:
 
 ```text
 process_evidence  Docs, tools, knowledge sources, and self-review trail used during coding
-adoption          AI-generated lines, accepted lines, and adoption rate when available
-context_metrics   Context call, hit, and adoption rates for knowledge/SPEC/skills analysis
+adoption          Candidate/accepted refs plus AI-generated lines, accepted lines, and adoption rate when available
 ```
+
+## Link Metrics
+
+Link metrics diagnose process bottlenecks across runs. They are not stored in `run.json`; they are generated from hook events:
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+Only runs with non-empty `events.jsonl` are counted:
+
+```text
+call_rate     = runs with a context call / observed runs
+hit_rate      = runs with a true context hit / runs with a context call
+adoption_rate = accepted AI-generated lines / AI-generated lines
+```
+
+Line-level adoption is calculated from real git refs, not from `diff.patch`: `base_ref -> candidate_ref` is the AI candidate change, and `base_ref -> accepted_ref` is the final accepted change. Use `scripts/adoption_lines.py` to write those fields into `run.json` after both refs exist. If line-level adoption is unavailable but run-level `adoption.adoption_rate` exists, the script averages those run rates. If no adoption data exists, adoption rate remains empty. It never uses `score / 100` as an adoption proxy.
+
+Context hit means the context call succeeded and its redacted `result_summary` says the result was observed and non-empty. Older events without `result_summary` are marked as `legacy_proxy`, not true hit-rate evidence.
 
 ## Minimum Valid Comparison
 

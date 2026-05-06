@@ -114,9 +114,28 @@ v0.2 开始，`run.json` 也可以保留可选诊断证据：
 
 ```text
 process_evidence  coding 过程中使用过的文档、工具、知识源和自检轨迹
-adoption          可获得时记录 AI 生成行数、采纳行数和采纳率
-context_metrics   用于知识库/SPEC/skills 分析的调用率、命中率、采纳率
+adoption          可获得时记录 candidate/accepted refs、AI 生成行数、采纳行数和采纳率
 ```
+
+## 链路指标
+
+链路指标用于跨 run 诊断过程瓶颈。它不写入 `run.json`，而是从 hook events 聚合生成：
+
+```bash
+python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+```
+
+只统计有非空 `events.jsonl` 的 run：
+
+```text
+调用率 = 发生 context 调用的 run / observed runs
+命中率 = 发生真命中的 run / 发生 context 调用的 run
+采纳率 = accepted AI-generated lines / AI-generated lines
+```
+
+行级采纳率来自真实 git refs，不来自 `diff.patch`：`base_ref -> candidate_ref` 表示 AI candidate 变更，`base_ref -> accepted_ref` 表示最终采纳变更。两个 ref 都存在后，用 `scripts/adoption_lines.py` 写入 `run.json`。如果没有行级采纳数据，但有 run 级 `adoption.adoption_rate`，脚本会取这些 run 的平均值。如果没有采纳数据，采纳率保持为空。它不会用 `score / 100` 冒充采纳率。
+
+真命中表示 context 调用成功，并且脱敏后的 `result_summary` 显示结果被观测到且非空。旧事件没有 `result_summary` 时只标记为 `legacy_proxy`，不伪装成真命中率。
 
 ## 最小有效比较
 

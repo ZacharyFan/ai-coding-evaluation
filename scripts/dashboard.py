@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.dashboard_i18n import LOCALES
+from scripts.context_metrics import collect_context_metrics_from_run_paths
 from scripts.report_data import collect_runs, is_number, is_scored
 
 
@@ -92,10 +93,113 @@ def dashboard_records(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 else None,
                 "hard_gates": hard_gates,
                 "path": run.get("_path") or "",
+                "run_json_path": run.get("_run_path") or "",
                 "scored": is_scored(run),
             }
         )
     return records
+
+
+def fmt_number(value: Any, digits: int = 2) -> str:
+    return f"{float(value):.{digits}f}" if is_number(value) else "-"
+
+
+def fmt_rate(value: Any, labels: dict[str, Any]) -> str:
+    return f"{round(float(value) * 100)}%" if is_number(value) else str(labels["js"]["not_available"])
+
+
+def context_metrics_for_records(records: list[dict[str, Any]]) -> dict[str, Any]:
+    paths = [Path(record["run_json_path"]) for record in records if record.get("run_json_path")]
+    return collect_context_metrics_from_run_paths(paths)
+
+
+def context_cards(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
+    card_labels = labels["context_metric_cards"]
+    cards = [
+        (card_labels["observed_runs"], str(metrics.get("observed_runs", 0))),
+        (card_labels["call_rate"], fmt_rate(metrics.get("call_rate"), labels)),
+        (card_labels["hit_rate"], fmt_rate(metrics.get("hit_rate"), labels)),
+        (card_labels["adoption_rate"], fmt_rate(metrics.get("adoption_rate"), labels)),
+    ]
+    return '<div class="context-cards">' + "".join(
+        '<div class="context-card"><span>' + esc(label) + "</span><strong>" + esc(value) + "</strong></div>"
+        for label, value in cards
+    ) + "</div>"
+
+
+def context_type_rows(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
+    rows = []
+    for item in metrics.get("by_type", []):
+        rows.append(
+            "<tr>"
+            f'<td>{esc(item.get("context_type"))}</td>'
+            f'<td>{esc(fmt_rate(item.get("call_rate"), labels))}</td>'
+            f'<td>{esc(fmt_rate(item.get("hit_rate"), labels))}</td>'
+            f'<td>{esc(fmt_rate(item.get("adoption_rate"), labels))}</td>'
+            f'<td>{esc(item.get("runs_with_context_call", 0))}</td>'
+            f'<td>{esc(item.get("hit_mode"))}</td>'
+            "</tr>"
+        )
+    if not rows:
+        rows.append(
+            f'<tr><td colspan="6">{esc(labels["js"]["not_available"])}</td></tr>'
+        )
+    return "".join(rows)
+
+
+def context_item_rows(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
+    rows = []
+    sorted_items = sorted(
+        metrics.get("by_item", []),
+        key=lambda item: (
+            -(item.get("call_rate") if is_number(item.get("call_rate")) else -1),
+            item.get("adoption_rate") if is_number(item.get("adoption_rate")) else 2,
+            str(item.get("context_id") or ""),
+        ),
+    )
+    for item in sorted_items[:20]:
+        rows.append(
+            "<tr>"
+            f'<td><code>{esc(item.get("context_id"))}</code></td>'
+            f'<td>{esc(item.get("context_type"))}</td>'
+            f'<td>{esc(fmt_rate(item.get("call_rate"), labels))}</td>'
+            f'<td>{esc(fmt_rate(item.get("hit_rate"), labels))}</td>'
+            f'<td>{esc(fmt_rate(item.get("adoption_rate"), labels))}</td>'
+            f'<td>{esc(item.get("runs_with_context_call", 0))}</td>'
+            f'<td>{esc(item.get("hit_mode"))}</td>'
+            "</tr>"
+        )
+    if not rows:
+        rows.append(
+            f'<tr><td colspan="7">{esc(labels["js"]["not_available"])}</td></tr>'
+        )
+    return "".join(rows)
+
+
+def context_metrics_section(records: list[dict[str, Any]], labels: dict[str, Any]) -> str:
+    metrics = context_metrics_for_records(records)
+    sections = labels["sections"]
+    type_headers = "".join(header_cell_html(header, labels) for header in labels["context_type_headers"])
+    item_headers = "".join(header_cell_html(header, labels) for header in labels["context_item_headers"])
+    return (
+        "<section>"
+        f'<div class="section-head"><h2>{esc(sections["context_metrics"])}</h2></div>'
+        f'<p class="section-note">{esc(sections["context_metrics_note"])}</p>'
+        f"{context_cards(metrics, labels)}"
+        '<div class="context-grid">'
+        '<div class="table-scroll"><table class="compact"><thead><tr>'
+        f"{type_headers}"
+        "</tr></thead><tbody>"
+        f"{context_type_rows(metrics, labels)}"
+        "</tbody></table></div>"
+        '<div class="table-scroll"><table class="compact"><thead><tr>'
+        f"{item_headers}"
+        "</tr></thead><tbody>"
+        f"{context_item_rows(metrics, labels)}"
+        "</tbody></table></div>"
+        "</div>"
+        "</section>"
+    )
 
 
 def filters(records: list[dict[str, Any]], labels: dict[str, Any]) -> str:
@@ -227,6 +331,17 @@ HTML_TEMPLATE = """<!doctype html>
     .metric-card:hover { border-color: var(--line-strong); box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08); }
     .metric-card span { display: block; color: var(--muted); font-size: 12px; font-weight: 650; margin-bottom: 8px; text-transform: uppercase; }
     .metric-card strong { font-size: 30px; line-height: 1; letter-spacing: 0; }
+    .context-cards { display: grid; grid-template-columns: repeat(4, minmax(132px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .context-card {
+      min-height: 76px;
+      padding: 13px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+    .context-card span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 7px; text-transform: uppercase; }
+    .context-card strong { display: block; font-size: 24px; line-height: 1; }
+    .context-grid { display: grid; grid-template-columns: minmax(360px, .9fr) minmax(520px, 1.4fr); gap: 12px; align-items: start; }
     .filter-panel { padding: 14px 16px 16px; }
     .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
     label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 650; }
@@ -359,6 +474,8 @@ HTML_TEMPLATE = """<!doctype html>
       header { display: block; }
       .sample-note { margin-top: 12px; white-space: normal; }
       .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .context-cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .context-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -385,6 +502,8 @@ HTML_TEMPLATE = """<!doctype html>
         <table id="heatmap" class="heatmap"></table>
       </div>
     </section>
+
+    %%CONTEXT_SECTION%%
 
     <section>
       <div class="section-head">
@@ -798,6 +917,7 @@ def dashboard_html(runs: list[dict[str, Any]], locale: str = "en") -> str:
         .replace("%%FILTERS%%", filters(records, labels))
         .replace("%%HEATMAP_TITLE%%", esc(sections["heatmap"]))
         .replace("%%HEATMAP_NOTE%%", esc(sections["heatmap_note"]))
+        .replace("%%CONTEXT_SECTION%%", context_metrics_section(records, labels))
         .replace("%%WORKFLOW_TITLE%%", esc(sections["workflow"]))
         .replace("%%MODEL_TITLE%%", esc(sections["model"]))
         .replace("%%DETAILS_TITLE%%", esc(sections["details"]))

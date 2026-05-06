@@ -28,6 +28,15 @@ def write_task(root: Path, task_id: str = "task") -> None:
 
 def write_run(root: Path, workflow: str, task_id: str, run_id: str, run: dict, score: dict | None = None) -> None:
     run_dir = root / "runs" / workflow / task_id / run_id
+    adoption_defaults = {
+        "candidate_ref": None,
+        "accepted_ref": None,
+        "ai_generated_lines": None,
+        "accepted_lines": None,
+        "adoption_rate": None,
+    }
+    run_data = {**run}
+    run_data["adoption"] = {**adoption_defaults, **run.get("adoption", {})}
     write_json(
         run_dir / "run.json",
         {
@@ -38,7 +47,7 @@ def write_run(root: Path, workflow: str, task_id: str, run_id: str, run: dict, s
             "human_interventions": 1,
             "tests": {"required_passed": True, "hidden_passed": None},
             "diff": {"unrelated_files_changed": 0},
-            **run,
+            **run_data,
         },
     )
     if score is not None:
@@ -50,6 +59,37 @@ def write_run(root: Path, workflow: str, task_id: str, run_id: str, run: dict, s
                 **score,
             },
         )
+
+
+def append_event(root: Path, workflow: str, task_id: str, run_id: str, event: dict) -> None:
+    events_path = root / "runs" / workflow / task_id / run_id / "events.jsonl"
+    events_path.parent.mkdir(parents=True, exist_ok=True)
+    with events_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, sort_keys=True) + "\n")
+
+
+def context_event(context_type: str, context_id: str, *, empty: bool = False) -> dict:
+    return {
+        "hook_event": "PostToolUse",
+        "tool_name": "Read",
+        "action": {
+            "success": True,
+            "result_summary": {
+                "observed": True,
+                "empty": empty,
+                "result_count": 0 if empty else 1,
+                "output_chars": 0 if empty else 20,
+                "line_count": 0 if empty else 1,
+                "summary": "empty_text" if empty else "non_empty_text",
+            },
+        },
+        "classifications": ["tool_use", "read_docs"],
+        "context": {
+            "type": context_type,
+            "id": context_id,
+            "classification_source": "configured",
+        },
+    }
 
 
 def test_collect_runs_merges_task_run_and_score_data(tmp_path):
@@ -193,6 +233,56 @@ def test_dashboard_html_supports_chinese_locale(tmp_path):
     assert "每个单元格聚合当前筛选条件下同一任务、同一工作流的已评分 run" in html
     assert "undefined" not in html
     assert "None" not in html
+
+
+def test_dashboard_html_includes_context_link_metrics(tmp_path):
+    write_task(tmp_path)
+    write_run(
+        tmp_path,
+        "baseline",
+        "task",
+        "hit",
+        {"adoption": {"ai_generated_lines": 10, "accepted_lines": 7, "adoption_rate": None}},
+        {"score": 100, "raw_score": 100, "attention_adjusted_score": 100, "hard_gates": []},
+    )
+    write_run(
+        tmp_path,
+        "baseline",
+        "task",
+        "miss",
+        {"adoption": {"ai_generated_lines": 10, "accepted_lines": 3, "adoption_rate": None}},
+        {"score": 80, "raw_score": 80, "attention_adjusted_score": 80, "hard_gates": []},
+    )
+    append_event(tmp_path, "baseline", "task", "hit", context_event("knowledge", "docs/contexts/catalog.md"))
+    append_event(tmp_path, "baseline", "task", "miss", context_event("knowledge", "docs/contexts/catalog.md", empty=True))
+    runs = collect_runs(tmp_path / "runs", tmp_path / "benchmarks" / "tasks")
+
+    html = dashboard_html(runs)
+
+    assert "Context Link Metrics" in html
+    assert "Call Rate" in html
+    assert "Hit Rate" in html
+    assert "Adoption Rate" in html
+    assert "docs/contexts/catalog.md" in html
+    assert "50%" in html
+    assert "true_hit" in html
+    assert "undefined" not in html
+    assert "None" not in html
+
+
+def test_dashboard_html_context_metrics_support_chinese_locale(tmp_path):
+    write_task(tmp_path)
+    write_run(tmp_path, "baseline", "task", "demo", {})
+    append_event(tmp_path, "baseline", "task", "demo", context_event("project_doc", "README.md"))
+    runs = collect_runs(tmp_path / "runs", tmp_path / "benchmarks" / "tasks")
+
+    html = dashboard_html(runs, "zh-CN")
+
+    assert "链路指标" in html
+    assert "调用率" in html
+    assert "命中率" in html
+    assert "采纳率" in html
+    assert "暂无数据" in html
 
 
 def test_dashboard_tooltip_text_is_escaped(tmp_path, monkeypatch):

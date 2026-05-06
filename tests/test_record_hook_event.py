@@ -37,6 +37,7 @@ def test_codex_post_tool_use_writes_standard_event(tmp_path, monkeypatch):
     assert events[0]["action"]["kind"] == "shell"
     assert events[0]["action"]["command_summary"] == "go test ./..."
     assert events[0]["action"]["success"] is True
+    assert events[0]["action"]["result_summary"]["observed"] is False
     assert "test_run" in events[0]["classifications"]
     assert "tool_use" in events[0]["classifications"]
 
@@ -78,8 +79,84 @@ def test_claude_read_event_is_normalized_without_file_content(tmp_path):
     assert event["source"] == "claude"
     assert event["action"]["kind"] == "read"
     assert event["action"]["paths"] == [str(tmp_path / "README.md")]
+    assert event["context"] == {
+        "type": "project_doc",
+        "id": str(tmp_path / "README.md"),
+        "classification_source": "heuristic",
+    }
     assert "read_docs" in event["classifications"]
     assert "do not persist" not in json.dumps(event)
+
+
+def test_configured_context_source_overrides_heuristic_type(tmp_path):
+    event = normalize_hook_event(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "rg -n Price docs/contexts/catalog.md"},
+            "tool_response": {"stdout": "docs/contexts/catalog.md:1:Price rule\n", "exit_code": 0},
+        },
+        "codex",
+        context_sources=[
+            {
+                "type": "knowledge",
+                "path_globs": ["docs/contexts/**"],
+            }
+        ],
+    )
+
+    assert event["context"] == {
+        "type": "knowledge",
+        "id": "docs/contexts/catalog.md",
+        "classification_source": "configured",
+    }
+    assert event["action"]["result_summary"] == {
+        "observed": True,
+        "empty": False,
+        "result_count": 1,
+        "output_chars": 38,
+        "line_count": 1,
+        "summary": "non_empty_text",
+    }
+
+
+def test_unknown_mcp_context_is_marked_without_guessing_type():
+    event = normalize_hook_event(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "mcp__custom__lookup",
+            "tool_input": {"query": "discount rule"},
+            "tool_response": {"results": []},
+        },
+        "claude",
+    )
+
+    assert event["context"] == {
+        "type": "mcp",
+        "id": "mcp__custom__lookup",
+        "classification_source": "adapter",
+    }
+    assert event["action"]["result_summary"]["observed"] is True
+    assert event["action"]["result_summary"]["empty"] is True
+    assert event["action"]["result_summary"]["result_count"] == 0
+
+
+def test_result_summary_does_not_persist_tool_output_or_secrets():
+    event = normalize_hook_event(
+        {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Bash",
+            "tool_input": {"command": "rg -n token README.md"},
+            "tool_response": {"stdout": "api_key=sk-secret-token\nsecond line\n", "exit_code": 0},
+        },
+        "codex",
+    )
+
+    serialized = json.dumps(event)
+    assert event["action"]["result_summary"]["empty"] is False
+    assert event["action"]["result_summary"]["line_count"] == 2
+    assert "sk-secret-token" not in serialized
+    assert "second line" not in serialized
 
 
 def test_apply_patch_event_keeps_only_patch_paths_not_patch_body():

@@ -24,10 +24,53 @@ LOCALES: dict[str, dict[str, Any]] = {
         "sections": {
             "heatmap": "Task × Workflow Heatmap",
             "heatmap_note": "Cells show final score, attention-adjusted score, run count, and gated run count.",
+            "context_metrics": "Context Link Metrics",
+            "context_metrics_note": "Cross-run diagnostics from hook events. Runs without non-empty events.jsonl are excluded.",
             "workflow": "Workflow Comparison",
             "model": "Model Comparison",
             "details": "Run Details",
         },
+        "context_metric_cards": {
+            "observed_runs": "Observed Runs",
+            "call_rate": "Call Rate",
+            "hit_rate": "Hit Rate",
+            "adoption_rate": "Adoption Rate",
+        },
+        "context_type_headers": [
+            {"label": "Context Type"},
+            {
+                "label": "Call Rate",
+                "help": "Runs with at least one context call in this type divided by observed runs.",
+            },
+            {
+                "label": "Hit Rate",
+                "help": "Runs with at least one true context hit in this type divided by runs with a context call in this type.",
+            },
+            {
+                "label": "Adoption Rate",
+                "help": "accepted AI-generated lines divided by AI-generated lines for runs using this context. If only run-level adoption_rate exists, this is the average of those run rates.",
+            },
+            {"label": "Runs"},
+            {"label": "Hit Mode"},
+        ],
+        "context_item_headers": [
+            {"label": "Context Item"},
+            {"label": "Type"},
+            {
+                "label": "Call Rate",
+                "help": "Runs with at least one call to this context item divided by observed runs.",
+            },
+            {
+                "label": "Hit Rate",
+                "help": "Runs with at least one true hit for this context item divided by runs that called this item.",
+            },
+            {
+                "label": "Adoption Rate",
+                "help": "accepted AI-generated lines divided by AI-generated lines for runs using this context item. Missing adoption data stays unavailable.",
+            },
+            {"label": "Runs"},
+            {"label": "Hit Mode"},
+        ],
         "metrics": {
             "runs": "Runs",
             "scored": "Scored",
@@ -97,6 +140,7 @@ LOCALES: dict[str, dict[str, Any]] = {
             "gated": "gated",
             "empty_state": "No runs match the current filters.",
             "calculation_help": "Calculation help",
+            "not_available": "not available",
         },
     },
     "zh-CN": {
@@ -119,10 +163,53 @@ LOCALES: dict[str, dict[str, Any]] = {
         "sections": {
             "heatmap": "任务 × 工作流热力图",
             "heatmap_note": "单元格展示最终分、注意力调整分、运行次数和触发 hard gate 的次数。",
+            "context_metrics": "链路指标",
+            "context_metrics_note": "来自 hook events 的跨 run 诊断。没有非空 events.jsonl 的 run 不计入分母。",
             "workflow": "工作流对比",
             "model": "模型对比",
             "details": "运行明细",
         },
+        "context_metric_cards": {
+            "observed_runs": "观测运行数",
+            "call_rate": "调用率",
+            "hit_rate": "命中率",
+            "adoption_rate": "采纳率",
+        },
+        "context_type_headers": [
+            {"label": "上下文类型"},
+            {
+                "label": "调用率",
+                "help": "该类型至少发生一次 context 调用的 run 数 / observed run 数。",
+            },
+            {
+                "label": "命中率",
+                "help": "该类型至少发生一次真命中的 run 数 / 该类型发生 context 调用的 run 数。",
+            },
+            {
+                "label": "采纳率",
+                "help": "使用该 context 的 run 中，accepted AI lines / generated AI lines。如果只有 run 级 adoption_rate，则取这些 run 的平均值。",
+            },
+            {"label": "运行数"},
+            {"label": "命中模式"},
+        ],
+        "context_item_headers": [
+            {"label": "上下文条目"},
+            {"label": "类型"},
+            {
+                "label": "调用率",
+                "help": "至少调用过该 context item 的 run 数 / observed run 数。",
+            },
+            {
+                "label": "命中率",
+                "help": "该条目至少发生一次真命中的 run 数 / 调用过该条目的 run 数。",
+            },
+            {
+                "label": "采纳率",
+                "help": "使用该 context item 的 run 中，accepted AI lines / generated AI lines。没有采纳数据时保持暂无数据。",
+            },
+            {"label": "运行数"},
+            {"label": "命中模式"},
+        ],
         "metrics": {
             "runs": "运行数",
             "scored": "已评分",
@@ -192,6 +279,7 @@ LOCALES: dict[str, dict[str, Any]] = {
             "gated": "触发 gate",
             "empty_state": "当前筛选条件下没有运行记录。",
             "calculation_help": "计算说明",
+            "not_available": "暂无数据",
         },
     },
 }
