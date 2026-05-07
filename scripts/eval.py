@@ -9,11 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-SCRIPT_ROOT = Path(__file__).resolve().parents[1]
-if str(SCRIPT_ROOT) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_ROOT))
-
 from scripts import dashboard as dashboard_module
 from scripts import llm_review_run as llm_review_module
 from scripts import report as report_module
@@ -22,6 +17,8 @@ from scripts.adoption_lines import calculate_adoption
 from scripts.collect_run import collect_run as collect_run_evidence
 from scripts.prepare_run import prepare_run
 from scripts.show_solution_diff import show_solution_diff
+
+SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -92,7 +89,7 @@ def run_dir_from_current(root: Path) -> Path:
     path = current_path(root)
     if not path.exists():
         raise FileNotFoundError(
-            "no current run found. Run `python scripts/eval.py start --workflow <workflow> --task <task-id>` first, "
+            "no current run found. Run `python -m scripts.eval start --workflow <workflow> --task <task-id>` first, "
             "or pass --repo /path/to/ai-coding-evaluation and --run-dir runs/<workflow>/<task-id>/<run-id>."
         )
     current = load_json(path)
@@ -174,7 +171,13 @@ def shell_env(root: Path, run_dir: Path | None = None) -> str:
     return "\n".join(f"export {key}={shlex.quote(value)}" for key, value in values.items()) + "\n"
 
 
-def collect_run(root: Path, run_dir: Path | None = None, *, reset_to_base: bool = False, expect_fail: bool = False) -> dict[str, Any]:
+def collect_run(
+    root: Path,
+    run_dir: Path | None = None,
+    *,
+    reset_to_base: bool = False,
+    expect_fail: bool = False,
+) -> dict[str, Any]:
     resolved = resolve_run_dir(root, run_dir)
     result = collect_run_evidence(
         task_path_for_run(root, resolved),
@@ -279,12 +282,18 @@ def print_report(root: Path, runs: Path) -> None:
     report_module.print_summary(collected)
 
 
-def write_dashboard(root: Path, runs: Path, tasks: Path, output: Path, zh_output: Path | None = None) -> list[Path]:
+def write_dashboard(
+    root: Path, runs: Path, tasks: Path, output: Path, zh_output: Path | None = None
+) -> list[Path]:
     runs_root = resolve_repo_path(root, runs)
     tasks_root = resolve_repo_path(root, tasks)
     output_path = resolve_repo_path(root, output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    zh_path = resolve_repo_path(root, zh_output) if zh_output else dashboard_module.zh_output_path(output_path)
+    zh_path = (
+        resolve_repo_path(root, zh_output)
+        if zh_output
+        else dashboard_module.zh_output_path(output_path)
+    )
     zh_path.parent.mkdir(parents=True, exist_ok=True)
 
     collected = dashboard_module.collect_runs(runs_root, tasks_root)
@@ -294,16 +303,30 @@ def write_dashboard(root: Path, runs: Path, tasks: Path, output: Path, zh_output
 
 
 def add_run_dir_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--run-dir", type=Path, default=None, help="Run directory. Defaults to runs/.current.json pointer.")
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=None,
+        help="Run directory. Defaults to runs/.current.json pointer.",
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Shortcut CLI for the AI coding evaluation workflow.")
-    parser.add_argument("--repo", type=Path, default=None, help="Evaluation repo root. Defaults to AI_EVAL_REPO or this script's repo.")
+    parser = argparse.ArgumentParser(
+        description="Shortcut CLI for the AI coding evaluation workflow."
+    )
+    parser.add_argument(
+        "--repo",
+        type=Path,
+        default=None,
+        help="Evaluation repo root. Defaults to AI_EVAL_REPO or this module's repo.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     start = subparsers.add_parser("start", help="Prepare a run and set runs/.current.json")
-    start.add_argument("--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd")
+    start.add_argument(
+        "--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd"
+    )
     start.add_argument("--task", required=True, help="Task id, matching benchmarks/tasks/{id}")
     start.add_argument("--run-id", default=None, help="Run id. Defaults to UTC timestamp.")
     start.add_argument("--model", default=None, help="Optional model label for run.json")
@@ -319,30 +342,81 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     collect = subparsers.add_parser("collect", help="Collect tests, diff, and run evidence")
     add_run_dir_arg(collect)
-    collect.add_argument("--reset-to-base", action="store_true", help="Checkout target.base_ref before running commands")
-    collect.add_argument("--expect-fail", action="store_true", help="Treat failing required tests as expected")
+    collect.add_argument(
+        "--reset-to-base",
+        action="store_true",
+        help="Checkout target.base_ref before running commands",
+    )
+    collect.add_argument(
+        "--expect-fail", action="store_true", help="Treat failing required tests as expected"
+    )
 
-    score = subparsers.add_parser("score", help="Write manual review scores and calculate score.json")
+    score = subparsers.add_parser(
+        "score", help="Write manual review scores and calculate score.json"
+    )
     add_run_dir_arg(score)
-    score.add_argument("--init", action="store_true", help="Create a manual scoring draft score.json")
-    score.add_argument("--set-review", nargs="+", metavar="DIMENSION=VALUE", help="Set manual review scores")
-    score.add_argument("--manual-hard-gate", action="append", dest="manual_hard_gates", help="Add a manual hard gate")
+    score.add_argument(
+        "--init", action="store_true", help="Create a manual scoring draft score.json"
+    )
+    score.add_argument(
+        "--set-review", nargs="+", metavar="DIMENSION=VALUE", help="Set manual review scores"
+    )
+    score.add_argument(
+        "--manual-hard-gate",
+        action="append",
+        dest="manual_hard_gates",
+        help="Add a manual hard gate",
+    )
 
     llm_review = subparsers.add_parser("llm-review", help="Use an OpenAI-compatible LLM reviewer")
     add_run_dir_arg(llm_review)
     llm_review.add_argument("--score-file", type=Path, default=None, help="Path to score.json")
-    llm_review.add_argument("--base-url", default=llm_review_module.env_or_default("AI_EVAL_REVIEW_BASE_URL", llm_review_module.DEFAULT_BASE_URL))
-    llm_review.add_argument("--model", default=llm_review_module.env_or_default("AI_EVAL_REVIEW_MODEL"))
-    llm_review.add_argument("--api-key-env", default=llm_review_module.env_or_default("AI_EVAL_REVIEW_API_KEY_ENV", llm_review_module.DEFAULT_API_KEY_ENV))
-    llm_review.add_argument("--response-mode", choices=["json_object", "json_schema"], default="json_object")
-    llm_review.add_argument("--max-input-chars", type=int, default=int(llm_review_module.env_or_default("AI_EVAL_REVIEW_MAX_INPUT_CHARS", str(llm_review_module.DEFAULT_MAX_INPUT_CHARS))))
-    llm_review.add_argument("--max-tokens", type=int, default=int(llm_review_module.env_or_default("AI_EVAL_REVIEW_MAX_TOKENS", str(llm_review_module.DEFAULT_MAX_TOKENS))))
+    llm_review.add_argument(
+        "--base-url",
+        default=llm_review_module.env_or_default(
+            "AI_EVAL_REVIEW_BASE_URL", llm_review_module.DEFAULT_BASE_URL
+        ),
+    )
+    llm_review.add_argument(
+        "--model", default=llm_review_module.env_or_default("AI_EVAL_REVIEW_MODEL")
+    )
+    llm_review.add_argument(
+        "--api-key-env",
+        default=llm_review_module.env_or_default(
+            "AI_EVAL_REVIEW_API_KEY_ENV", llm_review_module.DEFAULT_API_KEY_ENV
+        ),
+    )
+    llm_review.add_argument(
+        "--response-mode", choices=["json_object", "json_schema"], default="json_object"
+    )
+    llm_review.add_argument(
+        "--max-input-chars",
+        type=int,
+        default=int(
+            llm_review_module.env_or_default(
+                "AI_EVAL_REVIEW_MAX_INPUT_CHARS", str(llm_review_module.DEFAULT_MAX_INPUT_CHARS)
+            )
+        ),
+    )
+    llm_review.add_argument(
+        "--max-tokens",
+        type=int,
+        default=int(
+            llm_review_module.env_or_default(
+                "AI_EVAL_REVIEW_MAX_TOKENS", str(llm_review_module.DEFAULT_MAX_TOKENS)
+            )
+        ),
+    )
 
-    solution = subparsers.add_parser("solution-diff", help="Print candidate-vs-reference solution diff")
+    solution = subparsers.add_parser(
+        "solution-diff", help="Print candidate-vs-reference solution diff"
+    )
     add_run_dir_arg(solution)
     solution.add_argument("--color", choices=["auto", "always", "never"], default="auto")
 
-    adoption = subparsers.add_parser("adoption", help="Calculate line-level adoption and update run.json")
+    adoption = subparsers.add_parser(
+        "adoption", help="Calculate line-level adoption and update run.json"
+    )
     add_run_dir_arg(adoption)
     adoption.add_argument("--candidate-ref", default=None)
     adoption.add_argument("--accepted-ref", default=None)
@@ -368,10 +442,11 @@ def main(argv: list[str] | None = None) -> None:
             print(json.dumps(result, indent=2, sort_keys=True))
             print()
             print("Next:")
-            eval_script = root / "scripts" / "eval.py"
-            print(f'eval "$({shlex.quote(sys.executable)} {shlex.quote(str(eval_script))} env)"')
+            print('eval "$(python -m scripts.eval env)"')
             print('cd "$AI_EVAL_TARGET_WORKTREE"')
-            print("Use task.md in the run directory as the coding prompt. Do not read acceptance.md during coding.")
+            print(
+                "Use task.md in the run directory as the coding prompt. Do not read acceptance.md during coding."
+            )
             return
         if args.command == "current":
             run_dir = resolve_run_dir(root, args.run_dir)
@@ -384,7 +459,9 @@ def main(argv: list[str] | None = None) -> None:
             print(shell_env(root, args.run_dir), end="")
             return
         if args.command == "collect":
-            result = collect_run(root, args.run_dir, reset_to_base=args.reset_to_base, expect_fail=args.expect_fail)
+            result = collect_run(
+                root, args.run_dir, reset_to_base=args.reset_to_base, expect_fail=args.expect_fail
+            )
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "score":
@@ -415,7 +492,9 @@ def main(argv: list[str] | None = None) -> None:
             print(solution_diff(root, args.run_dir, color=args.color), end="")
             return
         if args.command == "adoption":
-            result = adoption_run(root, args.run_dir, candidate_ref=args.candidate_ref, accepted_ref=args.accepted_ref)
+            result = adoption_run(
+                root, args.run_dir, candidate_ref=args.candidate_ref, accepted_ref=args.accepted_ref
+            )
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "report":

@@ -2,7 +2,7 @@
 
 [Chinese version](hooks.zh-CN.md)
 
-Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `collect_run.py`.
+Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `python -m scripts.collect_run`.
 
 The shape is intentionally simple:
 
@@ -15,26 +15,22 @@ Claude/Codex hook input -> record_hook_event.py -> events.jsonl -> summarize_run
 Prepare a run first:
 
 ```bash
-python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
+python -m scripts.eval start --workflow <workflow> --task <task-id> [--model <model>]
 ```
 
 Export the run environment before starting the coding agent:
 
 ```bash
-eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
+eval "$(python -m scripts.eval env)"
 ```
 
-If you are already in the evaluation repo, this shorter form is equivalent:
+If you are outside the evaluation repo root, use the thin helper:
 
 ```bash
-eval "$(python scripts/eval.py env)"
+eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
 ```
 
-`eval.py env` prints absolute paths, so the exported environment keeps working after you `cd` into the target worktree. You can also run it outside the evaluation repo with:
-
-```bash
-python /absolute/path/to/ai-coding-evaluation/scripts/eval.py --repo /absolute/path/to/ai-coding-evaluation env
-```
+`scripts.eval env` prints absolute paths, so the exported environment keeps working after you `cd` into the target worktree.
 
 Then start Claude Code or Codex from the same shell:
 
@@ -55,7 +51,7 @@ Codex hooks require the feature flag:
 codex_hooks = true
 ```
 
-Use `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` as copyable templates for Codex configuration. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python .../scripts/eval.py env)"` before launching Codex.
+Use `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` as copyable templates for Codex configuration. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python -m scripts.eval env)"` before launching Codex, or use `bin/ai-eval env` when outside the repo root.
 
 The template records:
 
@@ -132,12 +128,12 @@ Prefer explicit `task.json.context_sources` mappings for benchmark tasks. If a c
 Run:
 
 ```bash
-python scripts/summarize_run_events.py \
+python -m scripts.summarize_run_events \
   --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
-`collect_run.py --write` also summarizes automatically when `events.jsonl` exists.
+`python -m scripts.collect_run --write` also summarizes automatically when `events.jsonl` exists.
 
 Derived fields include:
 
@@ -160,7 +156,7 @@ event_collection
 Cross-run link metrics are calculated separately:
 
 ```bash
-python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+python -m scripts.context_metrics --runs runs --output reports/context-metrics.json
 ```
 
 That script calculates call rate, hit rate, and adoption rate across runs with non-empty `events.jsonl`.

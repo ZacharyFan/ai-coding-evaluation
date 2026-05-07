@@ -17,7 +17,9 @@ def append_event(path: Path, event: dict) -> None:
         handle.write(json.dumps(event, sort_keys=True) + "\n")
 
 
-def write_run(root: Path, workflow: str, task: str, run_id: str, *, adoption: dict | None = None) -> Path:
+def write_run(
+    root: Path, workflow: str, task: str, run_id: str, *, adoption: dict | None = None
+) -> Path:
     run_dir = root / workflow / task / run_id
     adoption_defaults = {
         "candidate_ref": None,
@@ -41,7 +43,9 @@ def write_run(root: Path, workflow: str, task: str, run_id: str, *, adoption: di
     return run_dir
 
 
-def context_event(context_type: str, context_id: str, *, empty: bool = False, legacy: bool = False) -> dict:
+def context_event(
+    context_type: str, context_id: str, *, empty: bool = False, legacy: bool = False
+) -> dict:
     action = {
         "kind": "read",
         "command_summary": context_id,
@@ -77,7 +81,9 @@ def test_context_metrics_uses_non_empty_event_files_as_observed_runs(tmp_path):
     runs = tmp_path / "runs"
     called = write_run(runs, "baseline", "task", "called")
     append_event(called / "events.jsonl", context_event("knowledge", "docs/contexts/catalog.md"))
-    write_run(runs, "baseline", "task", "empty-events").joinpath("events.jsonl").write_text("", encoding="utf-8")
+    write_run(runs, "baseline", "task", "empty-events").joinpath("events.jsonl").write_text(
+        "", encoding="utf-8"
+    )
 
     metrics = collect_context_metrics(runs)
 
@@ -106,7 +112,9 @@ def test_context_metrics_calculates_call_hit_and_adoption_rates(tmp_path):
     )
     no_call = write_run(runs, "baseline", "task", "no-call")
     append_event(hit / "events.jsonl", context_event("knowledge", "docs/contexts/catalog.md"))
-    append_event(miss / "events.jsonl", context_event("knowledge", "docs/contexts/catalog.md", empty=True))
+    append_event(
+        miss / "events.jsonl", context_event("knowledge", "docs/contexts/catalog.md", empty=True)
+    )
     append_event(
         no_call / "events.jsonl",
         {

@@ -104,9 +104,9 @@ run.json        pre-scoring facts and coding-process evidence
 score.json      review scores, hard gates, and final score
 ```
 
-`prepare_run.py` creates this evidence scaffold, copies the coding task prompt into the run directory, and clones the target repo into an isolated run worktree. `acceptance.md` is not copied because it is reviewer-only. `collect_run.py` runs target setup/test commands, writes `test.log`, writes `diff.patch`, and updates mechanical test/diff facts in `run.json`. Optional hooks can append process events to `events.jsonl`; `summarize_run_events.py` derives process evidence and coding workflow wall-clock `duration_minutes` from those events. Without hooks, `duration_minutes` is a manually maintained run fact. Human reviewers pass `review.*` scores through `score_run.py --set-review`, or `llm_review_run.py` can ask an OpenAI-compatible LLM to fill the review dimensions. `score_run.py` calculates final score fields and writes `derived_hard_gates` plus the final merged `hard_gates`.
+`python -m scripts.prepare_run` creates this evidence scaffold, copies the coding task prompt into the run directory, and clones the target repo into an isolated run worktree. `acceptance.md` is not copied because it is reviewer-only. `python -m scripts.collect_run` runs target setup/test commands, writes `test.log`, writes `diff.patch`, and updates mechanical test/diff facts in `run.json`. Optional hooks can append process events to `events.jsonl`; `python -m scripts.summarize_run_events` derives process evidence and coding workflow wall-clock `duration_minutes` from those events. Without hooks, `duration_minutes` is a manually maintained run fact. Human reviewers pass `review.*` scores through `python -m scripts.score_run --set-review`, or `python -m scripts.llm_review_run` can ask an OpenAI-compatible LLM to fill the review dimensions. `python -m scripts.score_run` calculates final score fields and writes `derived_hard_gates` plus the final merged `hard_gates`.
 
-When `task.json` defines `scope.allowed_paths`, `collect_run.py` compares changed tracked files plus untracked files against that allowlist and writes `run.json.diff.scope_check=path_allowlist`, `unrelated_files_changed`, and `unrelated_files`. Without `scope`, unrelated-file status is unknown rather than assumed clean.
+When `task.json` defines `scope.allowed_paths`, `python -m scripts.collect_run` compares changed tracked files plus untracked files against that allowlist and writes `run.json.diff.scope_check=path_allowlist`, `unrelated_files_changed`, and `unrelated_files`. Without `scope`, unrelated-file status is unknown rather than assumed clean.
 
 Extra long-form review notes may be added as custom files in the run directory. They are not part of the standard protocol; structured review notes belong in `score.json.review_notes`.
 
@@ -122,7 +122,7 @@ adoption          Candidate/accepted refs plus AI-generated lines, accepted line
 Link metrics diagnose process bottlenecks across runs. They are not stored in `run.json`; they are generated from hook events:
 
 ```bash
-python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+python -m scripts.context_metrics --runs runs --output reports/context-metrics.json
 ```
 
 Only runs with non-empty `events.jsonl` are counted:
@@ -133,7 +133,7 @@ hit_rate      = runs with a true context hit / runs with a context call
 adoption_rate = accepted AI-generated lines / AI-generated lines
 ```
 
-Line-level adoption is calculated from real git refs, not from `diff.patch`: `base_ref -> candidate_ref` is the AI candidate change, and `base_ref -> accepted_ref` is the final accepted change. Use `scripts/adoption_lines.py` to write those fields into `run.json` after both refs exist. If line-level adoption is unavailable but run-level `adoption.adoption_rate` exists, the script averages those run rates. If no adoption data exists, adoption rate remains empty. It never uses `score / 100` as an adoption proxy.
+Line-level adoption is calculated from real git refs, not from `diff.patch`: `base_ref -> candidate_ref` is the AI candidate change, and `base_ref -> accepted_ref` is the final accepted change. Use `python -m scripts.adoption_lines` to write those fields into `run.json` after both refs exist. If line-level adoption is unavailable but run-level `adoption.adoption_rate` exists, the script averages those run rates. If no adoption data exists, adoption rate remains empty. It never uses `score / 100` as an adoption proxy.
 
 Context hit means the context call succeeded and its redacted `result_summary` says the result was observed and non-empty. Older events without `result_summary` are marked as `legacy_proxy`, not true hit-rate evidence.
 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 from scripts.collect_run import load_json
 
-
 EXAMPLE_ROOT = Path("examples/go-bugfix-l1-c1")
 
 
@@ -12,7 +11,10 @@ def test_go_bugfix_example_task_is_valid():
     task = load_json(task_dir / "task.json")
 
     assert task["id"] == "go-bugfix-l1-c1"
-    assert task["target"]["repo"] == "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git"
+    assert (
+        task["target"]["repo"]
+        == "https://github.com/ZacharyFan/ai-coding-evaluation-demo-golang.git"
+    )
     for filename in (
         "task.md",
         "task.zh-CN.md",

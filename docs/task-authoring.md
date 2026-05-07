@@ -118,8 +118,10 @@ Reject or rewrite tasks with:
 Run both commands before opening a PR:
 
 ```bash
-python scripts/validate_task.py benchmarks/tasks/<task-id>
-pytest
+python -m scripts.validate_task benchmarks/tasks/<task-id>
+ruff check scripts tests
+ruff format --check scripts tests
+python -m pytest
 ```
 
 The first command validates the task contribution. The second command protects the benchmark tooling itself.
@@ -127,11 +129,11 @@ The first command validates the task contribution. The second command protects t
 Templates are validated explicitly with:
 
 ```bash
-python scripts/validate_task.py benchmarks/templates
+python -m scripts.validate_task benchmarks/templates
 ```
 
 Local experiments are validated explicitly with:
 
 ```bash
-python scripts/validate_task.py benchmarks/local
+python -m scripts.validate_task benchmarks/local
 ```

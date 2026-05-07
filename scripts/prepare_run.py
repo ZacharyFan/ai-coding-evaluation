@@ -4,16 +4,13 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import subprocess
-import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 WORKFLOW_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 CODING_TASK_FILENAMES = ("task.md", "task.zh-CN.md")
@@ -49,11 +46,15 @@ def ensure_success(result: subprocess.CompletedProcess[str], fallback: str) -> N
 
 def validate_workflow_id(workflow_id: str) -> str:
     if not WORKFLOW_ID_PATTERN.fullmatch(workflow_id) or ".." in workflow_id:
-        raise ValueError("workflow_id must use only A-Z, a-z, 0-9, '.', '_', '-' and must not contain '..'")
+        raise ValueError(
+            "workflow_id must use only A-Z, a-z, 0-9, '.', '_', '-' and must not contain '..'"
+        )
     return workflow_id
 
 
-def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path, model: str | None = None) -> dict[str, Any]:
+def initial_run(
+    workflow_id: str, task: dict[str, Any], target_dir: Path, model: str | None = None
+) -> dict[str, Any]:
     target = task.get("target", {})
     return {
         "workflow_id": workflow_id,
@@ -101,7 +102,7 @@ def initial_run(workflow_id: str, task: dict[str, Any], target_dir: Path, model:
 def transcript_template(workflow_id: str, task_id: str, run_id: str, target_dir: Path) -> str:
     return f"""# Transcript
 
-Run target worktree prepared by `scripts/prepare_run.py`.
+Run target worktree prepared by `python -m scripts.prepare_run`.
 
 ```text
 workflow  {workflow_id}
@@ -121,9 +122,11 @@ def copy_coding_task_files(task_dir: Path, run_dir: Path) -> None:
             (run_dir / filename).write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
 
 
-def prepare_run(root: Path, workflow_id: str, task_id: str, run_id: str | None = None, model: str | None = None) -> Path:
+def prepare_run(
+    root: Path, workflow_id: str, task_id: str, run_id: str | None = None, model: str | None = None
+) -> Path:
     workflow_id = validate_workflow_id(workflow_id)
-    run_id = run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     task_path = root / "benchmarks" / "tasks" / task_id / "task.json"
 
     if not task_path.exists():
@@ -162,11 +165,19 @@ def prepare_run(root: Path, workflow_id: str, task_id: str, run_id: str | None =
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare an isolated target worktree for a benchmark run.")
-    parser.add_argument("--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd")
+    parser = argparse.ArgumentParser(
+        description="Prepare an isolated target worktree for a benchmark run."
+    )
+    parser.add_argument(
+        "--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd"
+    )
     parser.add_argument("--task", required=True, help="Task id, matching benchmarks/tasks/{id}")
     parser.add_argument("--run-id", default=None, help="Run id. Defaults to UTC timestamp.")
-    parser.add_argument("--model", default=None, help="Optional model label for run.json, such as gpt-5.5 or claude-sonnet-4.5")
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Optional model label for run.json, such as gpt-5.5 or claude-sonnet-4.5",
+    )
     return parser.parse_args()
 
 
@@ -188,13 +199,10 @@ def main() -> None:
     print(f"cd {run_dir / 'target'}")
     print()
     print("For hook-based process evidence, start the agent with:")
-    print(f"export AI_EVAL_REPO={ROOT}")
-    print(f"export AI_EVAL_RUN_DIR={run_dir}")
-    print(f"export AI_EVAL_TARGET_WORKTREE={run_dir / 'target'}")
-    print("export AI_EVAL_PHASE=coding")
+    print(f'eval "$(python -m scripts.eval env --run-dir {shlex.quote(str(run_dir))})"')
     print()
     print("After the workflow modifies the target worktree, collect evidence with:")
-    print("python scripts/collect_run.py \\")
+    print("python -m scripts.collect_run \\")
     print(f"  --task benchmarks/tasks/{args.task}/task.json \\")
     print(f"  --run {run_dir / 'run.json'} \\")
     print("  --write")
@@ -202,16 +210,20 @@ def main() -> None:
     print("Then choose one review path before final scoring.")
     print()
     print("Manual path: set review scores and calculate the final score:")
-    print("python scripts/score_run.py \\")
+    print("python -m scripts.score_run \\")
     print(f"  --task benchmarks/tasks/{args.task}/task.json \\")
     print(f"  --run {run_dir / 'run.json'} \\")
     print(f"  --score {run_dir / 'score.json'} \\")
-    print("  --set-review correctness=1.0 regression_safety=1.0 maintainability=0.8 test_quality=0.8 security=1.0 process_compliance=0.6 \\")
+    print(
+        "  --set-review correctness=1.0 regression_safety=1.0 maintainability=0.8 test_quality=0.8 security=1.0 process_compliance=0.6 \\"
+    )
     print("  --write")
-    print("Add --manual-hard-gate public_api_break only if a reviewer explicitly needs to cap the run.")
+    print(
+        "Add --manual-hard-gate public_api_break only if a reviewer explicitly needs to cap the run."
+    )
     print()
     print("LLM path: generate score.json and final score with:")
-    print("python scripts/llm_review_run.py \\")
+    print("python -m scripts.llm_review_run \\")
     print(f"  --task benchmarks/tasks/{args.task}/task.json \\")
     print(f"  --run {run_dir / 'run.json'} \\")
     print("  --write")

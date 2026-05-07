@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+
+if [ -n "${PYTHONPATH:-}" ]; then
+  export PYTHONPATH="$repo_root:$PYTHONPATH"
+else
+  export PYTHONPATH="$repo_root"
+fi
+
+exec python -m scripts.eval --repo "$repo_root" "$@"
+

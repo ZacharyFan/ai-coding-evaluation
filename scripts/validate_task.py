@@ -8,7 +8,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 REQUIRED_TASK_KEYS = {
     "id",
     "type",
@@ -137,7 +136,9 @@ def validate_task_dir(task_dir: Path) -> list[str]:
 
     missing_scoring_weights = sorted(REQUIRED_SCORING_WEIGHT_KEYS - set(scoring_weights))
     if missing_scoring_weights:
-        errors.append(f"{task_json}: missing scoring_weights keys: {', '.join(missing_scoring_weights)}")
+        errors.append(
+            f"{task_json}: missing scoring_weights keys: {', '.join(missing_scoring_weights)}"
+        )
 
     total = sum(float(scoring_weights.get(key, 0)) for key in REQUIRED_SCORING_WEIGHT_KEYS)
     if round(total, 5) != 100:
@@ -160,7 +161,10 @@ def validate_task_dir(task_dir: Path) -> list[str]:
         if not all(isinstance(path, str) and path.strip() for path in allowed_paths):
             errors.append(f"{task_json}: scope.allowed_paths must contain only non-empty strings")
 
-        if any(isinstance(path, str) and not is_repo_relative_scope_path(path) for path in allowed_paths):
+        if any(
+            isinstance(path, str) and not is_repo_relative_scope_path(path)
+            for path in allowed_paths
+        ):
             errors.append(f"{task_json}: scope.allowed_paths must be repo-relative paths")
 
     context_sources = task.get("context_sources")
@@ -182,19 +186,32 @@ def validate_task_dir(task_dir: Path) -> list[str]:
 
             path_globs = source.get("path_globs", [])
             if path_globs and not isinstance(path_globs, list):
-                errors.append(f"{task_json}: context_sources.path_globs must be a list when present")
+                errors.append(
+                    f"{task_json}: context_sources.path_globs must be a list when present"
+                )
                 path_globs = []
             if not all(isinstance(path, str) and path.strip() for path in path_globs):
-                errors.append(f"{task_json}: context_sources.path_globs must contain only non-empty strings")
-            if any(isinstance(path, str) and not is_repo_relative_scope_path(path) for path in path_globs):
-                errors.append(f"{task_json}: context_sources.path_globs must be repo-relative paths")
+                errors.append(
+                    f"{task_json}: context_sources.path_globs must contain only non-empty strings"
+                )
+            if any(
+                isinstance(path, str) and not is_repo_relative_scope_path(path)
+                for path in path_globs
+            ):
+                errors.append(
+                    f"{task_json}: context_sources.path_globs must be repo-relative paths"
+                )
 
             tool_names = source.get("tool_names", [])
             if tool_names and not isinstance(tool_names, list):
-                errors.append(f"{task_json}: context_sources.tool_names must be a list when present")
+                errors.append(
+                    f"{task_json}: context_sources.tool_names must be a list when present"
+                )
                 tool_names = []
             if not all(isinstance(tool, str) and tool.strip() for tool in tool_names):
-                errors.append(f"{task_json}: context_sources.tool_names must contain only non-empty strings")
+                errors.append(
+                    f"{task_json}: context_sources.tool_names must contain only non-empty strings"
+                )
 
     target = task.get("target")
     if target is not None:
@@ -207,12 +224,18 @@ def validate_task_dir(task_dir: Path) -> list[str]:
         solution_ref = target.get("solution_ref")
         if is_official_task_dir(task_dir) and not is_template_task_dir(task_dir):
             if not isinstance(repo, str) or not is_cloneable_git_url(repo):
-                errors.append(f"{task_json}: official tasks must use a cloneable Git URL in target.repo")
+                errors.append(
+                    f"{task_json}: official tasks must use a cloneable Git URL in target.repo"
+                )
 
             if not isinstance(base_ref, str) or not is_full_commit_sha(base_ref):
-                errors.append(f"{task_json}: official tasks must pin target.base_ref to a full commit SHA")
+                errors.append(
+                    f"{task_json}: official tasks must pin target.base_ref to a full commit SHA"
+                )
 
-            if solution_ref is not None and (not isinstance(solution_ref, str) or not is_full_commit_sha(solution_ref)):
+            if solution_ref is not None and (
+                not isinstance(solution_ref, str) or not is_full_commit_sha(solution_ref)
+            ):
                 errors.append(
                     f"{task_json}: official tasks must pin target.solution_ref to a full commit SHA when present"
                 )

@@ -5,19 +5,12 @@ import argparse
 import json
 import os
 import re
-import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
 from scripts.score_run import REVIEW_DIMENSIONS, score_run
-
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_API_KEY_ENV = "OPENAI_API_KEY"
@@ -50,13 +43,17 @@ def read_optional_text(path: Path) -> str:
 def redact_secrets(text: str) -> str:
     redacted = text
     redacted = SECRET_PATTERNS[0].sub(lambda match: f"{match.group(1)}=<redacted>", redacted)
-    redacted = SECRET_PATTERNS[1].sub(lambda match: f"{match.group(1)}: Bearer <redacted>", redacted)
+    redacted = SECRET_PATTERNS[1].sub(
+        lambda match: f"{match.group(1)}: Bearer <redacted>", redacted
+    )
     redacted = SECRET_PATTERNS[2].sub("Bearer <redacted>", redacted)
     redacted = SECRET_PATTERNS[3].sub("sk-<redacted>", redacted)
     return redacted
 
 
-def build_review_prompt(task_path: Path, run_path: Path, max_input_chars: int = DEFAULT_MAX_INPUT_CHARS) -> str:
+def build_review_prompt(
+    task_path: Path, run_path: Path, max_input_chars: int = DEFAULT_MAX_INPUT_CHARS
+) -> str:
     task_dir = task_path.parent
     run_dir = run_path.parent
     parts = [
@@ -267,7 +264,7 @@ def llm_review_run(
         "workflow_id": run.get("workflow_id", ""),
         "task_id": run.get("task_id", ""),
         "review": llm_review["review"],
-        "review_sources": {dimension: REVIEW_SOURCE for dimension in REVIEW_DIMENSIONS},
+        "review_sources": dict.fromkeys(REVIEW_DIMENSIONS, REVIEW_SOURCE),
         "review_notes": llm_review["review_notes"],
         "manual_hard_gates": existing.get("manual_hard_gates", []),
     }
@@ -285,17 +282,33 @@ def env_or_default(name: str, default: str | None = None) -> str | None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Use an OpenAI-compatible LLM to review a run and write score.json.")
+    parser = argparse.ArgumentParser(
+        description="Use an OpenAI-compatible LLM to review a run and write score.json."
+    )
     parser.add_argument("--task", required=True, type=Path, help="Path to task.json")
     parser.add_argument("--run", required=True, type=Path, help="Path to run.json")
     parser.add_argument("--score-file", type=Path, default=None, help="Path to score.json")
     parser.add_argument("--write", action="store_true", help="Write score.json")
-    parser.add_argument("--base-url", default=env_or_default("AI_EVAL_REVIEW_BASE_URL", DEFAULT_BASE_URL))
+    parser.add_argument(
+        "--base-url", default=env_or_default("AI_EVAL_REVIEW_BASE_URL", DEFAULT_BASE_URL)
+    )
     parser.add_argument("--model", default=env_or_default("AI_EVAL_REVIEW_MODEL"))
-    parser.add_argument("--api-key-env", default=env_or_default("AI_EVAL_REVIEW_API_KEY_ENV", DEFAULT_API_KEY_ENV))
-    parser.add_argument("--response-mode", choices=["json_object", "json_schema"], default="json_object")
-    parser.add_argument("--max-input-chars", type=int, default=int(env_or_default("AI_EVAL_REVIEW_MAX_INPUT_CHARS", str(DEFAULT_MAX_INPUT_CHARS))))
-    parser.add_argument("--max-tokens", type=int, default=int(env_or_default("AI_EVAL_REVIEW_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))))
+    parser.add_argument(
+        "--api-key-env", default=env_or_default("AI_EVAL_REVIEW_API_KEY_ENV", DEFAULT_API_KEY_ENV)
+    )
+    parser.add_argument(
+        "--response-mode", choices=["json_object", "json_schema"], default="json_object"
+    )
+    parser.add_argument(
+        "--max-input-chars",
+        type=int,
+        default=int(env_or_default("AI_EVAL_REVIEW_MAX_INPUT_CHARS", str(DEFAULT_MAX_INPUT_CHARS))),
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=int(env_or_default("AI_EVAL_REVIEW_MAX_TOKENS", str(DEFAULT_MAX_TOKENS))),
+    )
     return parser.parse_args()
 
 

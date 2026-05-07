@@ -8,10 +8,9 @@ import os
 import re
 import shlex
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*['\"]?[^'\"\s]+"),
@@ -38,7 +37,16 @@ EDIT_TOOLS = {"edit", "write", "multiedit", "apply_patch"}
 READ_TOOLS = {"read", "grep", "glob", "ls"}
 SHELL_TOOLS = {"bash", "shell"}
 WEB_TOOLS = {"webfetch", "websearch", "web_search"}
-CONTEXT_SOURCE_TYPES = {"spec", "project_doc", "knowledge", "component_doc", "skill", "web", "mcp", "unknown"}
+CONTEXT_SOURCE_TYPES = {
+    "spec",
+    "project_doc",
+    "knowledge",
+    "component_doc",
+    "skill",
+    "web",
+    "mcp",
+    "unknown",
+}
 TEST_COMMAND_PATTERN = re.compile(
     r"(^|\s)(go test|pytest|python -m pytest|npm test|pnpm test|yarn test|cargo test|mvn test|gradle test|"
     r"jest|vitest|unittest|lint|typecheck|build|(?:\./)?scripts/run_eval_case\.sh)(\s|$)"
@@ -48,13 +56,15 @@ PATH_KEY_PATTERN = re.compile(r"(^|_)(file|path|cwd|directory)(_|$)", re.IGNOREC
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def redact_secrets(text: str) -> str:
     redacted = text
     redacted = SECRET_PATTERNS[0].sub(lambda match: f"{match.group(1)}=<redacted>", redacted)
-    redacted = SECRET_PATTERNS[1].sub(lambda match: f"{match.group(1)}: Bearer <redacted>", redacted)
+    redacted = SECRET_PATTERNS[1].sub(
+        lambda match: f"{match.group(1)}: Bearer <redacted>", redacted
+    )
     redacted = SECRET_PATTERNS[2].sub("Bearer <redacted>", redacted)
     redacted = SECRET_PATTERNS[3].sub("sk-<redacted>", redacted)
     redacted = SECRET_PATTERNS[4].sub("<redacted-jwt>", redacted)
@@ -78,14 +88,18 @@ def looks_like_path(value: str) -> bool:
     lowered = value.lower()
     return (
         "/" in value
-        or lowered.endswith((".md", ".json", ".toml", ".yaml", ".yml", ".go", ".py", ".ts", ".tsx", ".js", ".jsx"))
+        or lowered.endswith(
+            (".md", ".json", ".toml", ".yaml", ".yml", ".go", ".py", ".ts", ".tsx", ".js", ".jsx")
+        )
         or lowered in DOC_FILENAMES
     )
 
 
 def extract_command_paths(command: str) -> list[str]:
     if "*** Begin Patch" in command:
-        patch_paths = re.findall(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", command, flags=re.MULTILINE)
+        patch_paths = re.findall(
+            r"^\*\*\* (?:Add|Update|Delete) File: (.+)$", command, flags=re.MULTILINE
+        )
         patch_paths.extend(re.findall(r"^\*\*\* Move to: (.+)$", command, flags=re.MULTILINE))
         return unique([redact_secrets(path.strip()) for path in patch_paths if path.strip()])
 
@@ -186,7 +200,9 @@ def result_summary(tool_response: Any, command_summary_value: str) -> dict[str, 
     if text is not None:
         stripped = text.strip()
         lines = [line for line in stripped.splitlines() if line.strip()]
-        is_search = bool(re.search(r"(^|\s)(rg|grep|find|search)(\s|$)", command_summary_value.lower()))
+        is_search = bool(
+            re.search(r"(^|\s)(rg|grep|find|search)(\s|$)", command_summary_value.lower())
+        )
         return {
             "observed": True,
             "empty": not bool(stripped),
@@ -208,7 +224,11 @@ def result_summary(tool_response: Any, command_summary_value: str) -> dict[str, 
         }
 
     if isinstance(tool_response, dict):
-        meaningful_keys = [key for key in tool_response if key not in {"success", "ok", "exit_code", "exitCode", "returncode"}]
+        meaningful_keys = [
+            key
+            for key in tool_response
+            if key not in {"success", "ok", "exit_code", "exitCode", "returncode"}
+        ]
         if meaningful_keys:
             return {
                 "observed": True,
@@ -234,7 +254,9 @@ def path_matches_glob(path: str, pattern: str) -> bool:
     normalized_pattern = normalized_path(pattern).lstrip("./")
     if fnmatch.fnmatch(normalized, normalized_pattern):
         return True
-    return normalized.endswith("/" + normalized_pattern.rstrip("*")) or fnmatch.fnmatch(normalized.split("/target/", 1)[-1], normalized_pattern)
+    return normalized.endswith("/" + normalized_pattern.rstrip("*")) or fnmatch.fnmatch(
+        normalized.split("/target/", 1)[-1], normalized_pattern
+    )
 
 
 def configured_context(
@@ -254,7 +276,11 @@ def configured_context(
                 continue
             for path in paths:
                 if path_matches_glob(path, pattern):
-                    return {"type": source_type, "id": normalized_path(path), "classification_source": "configured"}
+                    return {
+                        "type": source_type,
+                        "id": normalized_path(path),
+                        "classification_source": "configured",
+                    }
         for configured_tool in source.get("tool_names") or []:
             if isinstance(configured_tool, str) and configured_tool == tool:
                 return {"type": source_type, "id": tool, "classification_source": "configured"}
@@ -268,9 +294,17 @@ def heuristic_context_type(path: str) -> str | None:
         return "knowledge"
     if "/docs/components/" in normalized or normalized.startswith("docs/components/"):
         return "component_doc"
-    if "/skills/" in normalized or "/.codex/skills/" in normalized or "/.claude/agents/" in normalized:
+    if (
+        "/skills/" in normalized
+        or "/.codex/skills/" in normalized
+        or "/.claude/agents/" in normalized
+    ):
         return "skill"
-    if normalized.startswith("specs/") or "/specs/" in normalized or basename in {"task.md", "task.zh-cn.md"}:
+    if (
+        normalized.startswith("specs/")
+        or "/specs/" in normalized
+        or basename in {"task.md", "task.zh-cn.md"}
+    ):
         return "spec"
     if is_doc_path(path):
         return "project_doc"
@@ -290,17 +324,29 @@ def context_metadata(
 
     key = tool_key(tool_name)
     if "web_context" in classes:
-        return {"type": "web", "id": short_text(summary or tool_name or "web"), "classification_source": "adapter"}
+        return {
+            "type": "web",
+            "id": short_text(summary or tool_name or "web"),
+            "classification_source": "adapter",
+        }
     if key.startswith("mcp__"):
         return {"type": "mcp", "id": tool_name or "mcp", "classification_source": "adapter"}
 
     for path in paths:
         context_type = heuristic_context_type(path)
         if context_type:
-            return {"type": context_type, "id": normalized_path(path), "classification_source": "heuristic"}
+            return {
+                "type": context_type,
+                "id": normalized_path(path),
+                "classification_source": "heuristic",
+            }
 
     if is_context_class(classes):
-        return {"type": "unknown", "id": short_text(summary or tool_name or "unknown"), "classification_source": "unknown"}
+        return {
+            "type": "unknown",
+            "id": short_text(summary or tool_name or "unknown"),
+            "classification_source": "unknown",
+        }
     return None
 
 
@@ -333,20 +379,36 @@ def action_kind(tool_name: str | None, hook_event: str) -> str:
     key = tool_key(tool_name)
     if key in SHELL_TOOLS:
         return "shell"
-    if key in EDIT_TOOLS or key.startswith("mcp__") and any(part in key for part in ("write", "edit", "create")):
+    if (
+        key in EDIT_TOOLS
+        or key.startswith("mcp__")
+        and any(part in key for part in ("write", "edit", "create"))
+    ):
         return "edit"
-    if key in READ_TOOLS or key.startswith("mcp__") and any(part in key for part in ("read", "search", "list", "get")):
+    if (
+        key in READ_TOOLS
+        or key.startswith("mcp__")
+        and any(part in key for part in ("read", "search", "list", "get"))
+    ):
         return "read"
     if key in WEB_TOOLS or "web" in key:
         return "web"
-    if hook_event in {"UserPromptSubmit", "Stop", "SessionStart", "SessionEnd", "InstructionsLoaded"}:
+    if hook_event in {
+        "UserPromptSubmit",
+        "Stop",
+        "SessionStart",
+        "SessionEnd",
+        "InstructionsLoaded",
+    }:
         return "lifecycle"
     if hook_event == "PermissionRequest":
         return "permission"
     return "tool"
 
 
-def command_summary(tool_name: str | None, hook_event: str, tool_input: Any, raw: dict[str, Any]) -> str:
+def command_summary(
+    tool_name: str | None, hook_event: str, tool_input: Any, raw: dict[str, Any]
+) -> str:
     key = tool_key(tool_name)
     if key == "apply_patch":
         return "apply_patch"
@@ -374,7 +436,10 @@ def command_summary(tool_name: str | None, hook_event: str, tool_input: Any, raw
 def classify(tool_name: str | None, hook_event: str, summary: str, paths: list[str]) -> list[str]:
     classes: list[str] = []
     key = tool_key(tool_name)
-    if hook_event in {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"} and tool_name:
+    if (
+        hook_event in {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"}
+        and tool_name
+    ):
         classes.append("tool_use")
     if hook_event == "UserPromptSubmit":
         classes.append("user_prompt")
@@ -382,7 +447,11 @@ def classify(tool_name: str | None, hook_event: str, summary: str, paths: list[s
         classes.append("permission_request")
     if hook_event == "InstructionsLoaded":
         classes.append("read_docs")
-    if key in EDIT_TOOLS or key.startswith("mcp__") and any(part in key for part in ("write", "edit", "create")):
+    if (
+        key in EDIT_TOOLS
+        or key.startswith("mcp__")
+        and any(part in key for part in ("write", "edit", "create"))
+    ):
         classes.append("code_edit")
     if key in WEB_TOOLS or "web" in key:
         classes.append("web_context")
@@ -513,13 +582,19 @@ def handle_hook_event(raw: dict[str, Any], adapter: str) -> str:
         append_event(run_dir, event)
 
     if blocked:
-        return deny_output(adapter, "acceptance.md is review-only evidence and cannot be read during coding.")
+        return deny_output(
+            adapter, "acceptance.md is review-only evidence and cannot be read during coding."
+        )
     return continue_output(event.get("hook_event", ""))
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Record Claude Code or Codex hook events as normalized JSONL.")
-    parser.add_argument("--adapter", required=True, choices=["claude", "codex"], help="Hook input adapter")
+    parser = argparse.ArgumentParser(
+        description="Record Claude Code or Codex hook events as normalized JSONL."
+    )
+    parser.add_argument(
+        "--adapter", required=True, choices=["claude", "codex"], help="Hook input adapter"
+    )
     return parser.parse_args()
 
 

@@ -118,8 +118,10 @@ Make it better.
 开 PR 前运行：
 
 ```bash
-python scripts/validate_task.py benchmarks/tasks/<task-id>
-pytest
+python -m scripts.validate_task benchmarks/tasks/<task-id>
+ruff check scripts tests
+ruff format --check scripts tests
+python -m pytest
 ```
 
 第一个命令验证任务贡献本身。第二个命令保护 benchmark 工具链。
@@ -127,11 +129,11 @@ pytest
 显式校验模板：
 
 ```bash
-python scripts/validate_task.py benchmarks/templates
+python -m scripts.validate_task benchmarks/templates
 ```
 
 显式校验本地实验任务：
 
 ```bash
-python scripts/validate_task.py benchmarks/local
+python -m scripts.validate_task benchmarks/local
 ```

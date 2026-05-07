@@ -17,8 +17,10 @@
 4. 本地验证：
 
    ```bash
-   python scripts/validate_task.py benchmarks/tasks/<task-id>
-   pytest
+   python -m scripts.validate_task benchmarks/tasks/<task-id>
+   ruff check scripts tests
+   ruff format --check scripts tests
+   python -m pytest
    ```
 
 ## 任务目录契约
@@ -95,8 +97,10 @@ context_maturity
 
 开 PR 前确认：
 
-- `python scripts/validate_task.py benchmarks/tasks/<task-id>` 通过
-- `pytest` 通过
+- `python -m scripts.validate_task benchmarks/tasks/<task-id>` 通过
+- `ruff check scripts tests` 通过
+- `ruff format --check scripts tests` 通过
+- `python -m pytest` 通过
 - `tests.sh` 可执行
 - 任务能从公开目标仓库的干净 checkout 重跑
 - `scoring_weights` 仍然合计 100

@@ -2,13 +2,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from scripts.report_data import collect_runs, group_by, is_scored, summarize_runs
 
@@ -65,7 +60,9 @@ def print_summary(runs: list[dict[str, Any]]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate a markdown report from run and score files.")
+    parser = argparse.ArgumentParser(
+        description="Generate a markdown report from run and score files."
+    )
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="Runs root directory")
     return parser.parse_args()
 

@@ -5,17 +5,13 @@ import argparse
 import fnmatch
 import json
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
+from scripts.summarize_run_events import summarize_run_events
+from scripts.validate_task import is_cloneable_git_url
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.validate_task import is_cloneable_git_url
-from scripts.summarize_run_events import summarize_run_events
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -59,12 +55,16 @@ def resolve_collection_repo(task_target: dict[str, Any], run: dict[str, Any]) ->
 
     repo = task_target["repo"]
     if is_cloneable_git_url(repo):
-        raise RuntimeError("remote target repo has no prepared worktree; run scripts/prepare_run.py first")
+        raise RuntimeError(
+            "remote target repo has no prepared worktree; run `python -m scripts.prepare_run` first"
+        )
 
     return resolve_target_repo(repo)
 
 
-def run_command(command: list[str] | str, cwd: Path, *, shell: bool = False) -> subprocess.CompletedProcess[str]:
+def run_command(
+    command: list[str] | str, cwd: Path, *, shell: bool = False
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         cwd=cwd,
@@ -123,7 +123,9 @@ def diff_text(repo: Path, base_ref: str) -> str:
     for path in untracked_files(repo):
         untracked_diff = run_command(["git", "diff", "--no-index", "--", "/dev/null", path], repo)
         if untracked_diff.returncode not in (0, 1):
-            raise RuntimeError(untracked_diff.stderr.strip() or f"failed to diff untracked file {path}")
+            raise RuntimeError(
+                untracked_diff.stderr.strip() or f"failed to diff untracked file {path}"
+            )
         if untracked_diff.stdout:
             parts.append(untracked_diff.stdout)
     return "\n".join(part.rstrip() for part in parts if part).rstrip() + ("\n" if parts else "")
@@ -132,8 +134,12 @@ def diff_text(repo: Path, base_ref: str) -> str:
 def changed_files(repo: Path, base_ref: str) -> list[str]:
     diff = git(repo, "diff", "--name-only", base_ref)
     if diff.returncode != 0:
-        raise RuntimeError(diff.stderr.strip() or f"failed to list changed files against {base_ref}")
-    return unique([line for line in diff.stdout.splitlines() if line.strip()] + untracked_files(repo))
+        raise RuntimeError(
+            diff.stderr.strip() or f"failed to list changed files against {base_ref}"
+        )
+    return unique(
+        [line for line in diff.stdout.splitlines() if line.strip()] + untracked_files(repo)
+    )
 
 
 def untracked_files(repo: Path) -> list[str]:
@@ -172,7 +178,9 @@ def scope_check_result(task: dict[str, Any], changed: list[str]) -> dict[str, An
         }
 
     allowed_paths = scope.get("allowed_paths", [])
-    if not isinstance(allowed_paths, list) or not all(isinstance(path, str) for path in allowed_paths):
+    if not isinstance(allowed_paths, list) or not all(
+        isinstance(path, str) for path in allowed_paths
+    ):
         raise ValueError("task.scope.allowed_paths must be a list of strings")
 
     unrelated_files = [path for path in changed if not matches_allowed_path(path, allowed_paths)]
@@ -240,9 +248,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect target checks and run evidence.")
     parser.add_argument("--task", required=True, type=Path, help="Path to task.json")
     parser.add_argument("--run", required=True, type=Path, help="Path to run.json")
-    parser.add_argument("--write", action="store_true", help="Write test.log, diff.patch, and run.json")
-    parser.add_argument("--reset-to-base", action="store_true", help="Checkout target.base_ref before running commands")
-    parser.add_argument("--expect-fail", action="store_true", help="Treat failing required tests as expected")
+    parser.add_argument(
+        "--write", action="store_true", help="Write test.log, diff.patch, and run.json"
+    )
+    parser.add_argument(
+        "--reset-to-base",
+        action="store_true",
+        help="Checkout target.base_ref before running commands",
+    )
+    parser.add_argument(
+        "--expect-fail", action="store_true", help="Treat failing required tests as expected"
+    )
     return parser.parse_args()
 
 

@@ -123,12 +123,19 @@ def test_summarizes_docs_tools_and_self_review_without_context_metrics(tmp_path)
     assert updated["models_used"] == ["gpt-5.5"]
     assert updated["process_evidence"]["project_instructions_read"] is True
     assert updated["process_evidence"]["relevant_docs_read"] == ["AGENTS.md"]
-    assert updated["process_evidence"]["tools_used"] == ["Read", "apply_patch", "go test ./...", "WebFetch"]
+    assert updated["process_evidence"]["tools_used"] == [
+        "Read",
+        "apply_patch",
+        "go test ./...",
+        "WebFetch",
+    ]
     assert updated["process_evidence"]["knowledge_sources_used"] == ["WebFetch"]
     assert updated["process_evidence"]["self_review_performed"] is True
     assert "context_metrics" not in updated
     assert updated["event_collection"]["event_count"] == 4
-    assert json.loads(run_path.read_text(encoding="utf-8"))["event_collection"]["sources"] == ["codex"]
+    assert json.loads(run_path.read_text(encoding="utf-8"))["event_collection"]["sources"] == [
+        "codex"
+    ]
 
 
 def test_uses_most_common_tool_model_as_primary_model(tmp_path):
@@ -136,7 +143,9 @@ def test_uses_most_common_tool_model_as_primary_model(tmp_path):
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, base_run())
     append_event(events_path, event("SessionStart", model="gpt-5.5"))
-    append_event(events_path, event("UserPromptSubmit", model="gpt-5.5", classifications=["user_prompt"]))
+    append_event(
+        events_path, event("UserPromptSubmit", model="gpt-5.5", classifications=["user_prompt"])
+    )
     append_event(
         events_path,
         event(
@@ -211,7 +220,9 @@ def test_duration_uses_first_prompt_to_last_stop_across_models(tmp_path):
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, {**base_run(), "duration_minutes": 99})
-    append_event(events_path, event("SessionStart", timestamp="2026-05-02T00:00:00Z", model="gpt-5.5"))
+    append_event(
+        events_path, event("SessionStart", timestamp="2026-05-02T00:00:00Z", model="gpt-5.5")
+    )
     append_event(
         events_path,
         event(
@@ -232,7 +243,9 @@ def test_duration_uses_first_prompt_to_last_stop_across_models(tmp_path):
             classifications=["tool_use", "test_run"],
         ),
     )
-    append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:29Z", model="gpt-5.3-codex"))
+    append_event(
+        events_path, event("Stop", timestamp="2026-05-02T00:04:29Z", model="gpt-5.3-codex")
+    )
 
     updated = summarize_run_events(run_path)
 
@@ -244,7 +257,12 @@ def test_duration_prefers_last_session_end_when_available(tmp_path):
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, {**base_run(), "duration_minutes": 99})
-    append_event(events_path, event("UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]))
+    append_event(
+        events_path,
+        event(
+            "UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]
+        ),
+    )
     append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:00Z"))
     append_event(events_path, event("SessionEnd", timestamp="2026-05-02T00:05:30Z"))
 
@@ -257,7 +275,12 @@ def test_duration_falls_back_to_last_valid_event_without_terminal_event(tmp_path
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, {**base_run(), "duration_minutes": 99})
-    append_event(events_path, event("UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]))
+    append_event(
+        events_path,
+        event(
+            "UserPromptSubmit", timestamp="2026-05-02T00:00:00Z", classifications=["user_prompt"]
+        ),
+    )
     append_event(
         events_path,
         event(
@@ -278,7 +301,10 @@ def test_duration_without_prompt_preserves_existing_value(tmp_path):
     run_path = tmp_path / "run.json"
     events_path = tmp_path / "events.jsonl"
     write_json(run_path, {**base_run(), "duration_minutes": 12.5})
-    append_event(events_path, event("PostToolUse", timestamp="2026-05-02T00:03:30Z", classifications=["tool_use"]))
+    append_event(
+        events_path,
+        event("PostToolUse", timestamp="2026-05-02T00:03:30Z", classifications=["tool_use"]),
+    )
     append_event(events_path, event("Stop", timestamp="2026-05-02T00:04:00Z"))
 
     updated = summarize_run_events(run_path)

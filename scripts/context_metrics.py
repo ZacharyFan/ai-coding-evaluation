@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean
 from typing import Any
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -62,12 +62,20 @@ def event_context(event: dict[str, Any]) -> dict[str, str] | None:
     tool_name = str(event.get("tool_name") or "")
 
     if "web_context" in class_set:
-        return {"type": "web", "id": summary or tool_name or "web", "classification_source": "legacy"}
+        return {
+            "type": "web",
+            "id": summary or tool_name or "web",
+            "classification_source": "legacy",
+        }
     if tool_name.startswith("mcp__"):
         return {"type": "mcp", "id": tool_name, "classification_source": "legacy"}
     if "read_docs" in class_set:
         context_id = str(paths[0]) if paths else summary
-        return {"type": heuristic_context_type(context_id), "id": context_id, "classification_source": "legacy"}
+        return {
+            "type": heuristic_context_type(context_id),
+            "id": context_id,
+            "classification_source": "legacy",
+        }
     return None
 
 
@@ -78,11 +86,26 @@ def heuristic_context_type(path: str) -> str:
         return "knowledge"
     if "/docs/components/" in normalized or normalized.startswith("docs/components/"):
         return "component_doc"
-    if "/skills/" in normalized or "/.codex/skills/" in normalized or "/.claude/agents/" in normalized:
+    if (
+        "/skills/" in normalized
+        or "/.codex/skills/" in normalized
+        or "/.claude/agents/" in normalized
+    ):
         return "skill"
-    if normalized.startswith("specs/") or "/specs/" in normalized or basename in {"task.md", "task.zh-cn.md"}:
+    if (
+        normalized.startswith("specs/")
+        or "/specs/" in normalized
+        or basename in {"task.md", "task.zh-cn.md"}
+    ):
         return "spec"
-    if basename in {"agents.md", "claude.md", "readme.md", "readme.zh-cn.md", "go.mod", "package.json"}:
+    if basename in {
+        "agents.md",
+        "claude.md",
+        "readme.md",
+        "readme.zh-cn.md",
+        "go.mod",
+        "package.json",
+    }:
         return "project_doc"
     if normalized.startswith("docs/") or "/docs/" in normalized:
         return "project_doc"
@@ -108,13 +131,18 @@ def context_hit(event: dict[str, Any]) -> bool:
     summary = result_summary(event)
     if summary is None:
         return event_success(event)
-    return event_success(event) and summary.get("observed") is True and summary.get("empty") is False
+    return (
+        event_success(event) and summary.get("observed") is True and summary.get("empty") is False
+    )
 
 
 def hit_mode(events: list[dict[str, Any]]) -> str:
     if not events:
         return "not_available"
-    observed = [result_summary(event) is not None and result_summary(event).get("observed") is True for event in events]
+    observed = [
+        result_summary(event) is not None and result_summary(event).get("observed") is True
+        for event in events
+    ]
     if all(observed):
         return "true_hit"
     if not any(observed):
@@ -153,7 +181,9 @@ def summarize_group(
     run_records: list[dict[str, Any]],
     context_events_by_run: dict[Path, list[dict[str, Any]]],
 ) -> dict[str, Any]:
-    runs_with_call = [run for run in run_records if context_events_by_run.get(Path(run["_run_dir"]))]
+    runs_with_call = [
+        run for run in run_records if context_events_by_run.get(Path(run["_run_dir"]))
+    ]
     runs_with_hit = [
         run
         for run in runs_with_call
@@ -194,7 +224,9 @@ def collect_context_metrics_from_run_paths(run_paths: list[Path]) -> dict[str, A
             context_type = context["type"]
             context_id = context["id"]
             type_events_by_run.setdefault(context_type, {}).setdefault(run_dir, []).append(event)
-            item_events_by_run.setdefault((context_type, context_id), {}).setdefault(run_dir, []).append(event)
+            item_events_by_run.setdefault((context_type, context_id), {}).setdefault(
+                run_dir, []
+            ).append(event)
 
     observed_count = len(observed_runs)
     overall = summarize_group(
@@ -237,7 +269,9 @@ def collect_context_metrics(runs_root: Path) -> dict[str, Any]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Aggregate cross-run context link metrics from hook events.")
+    parser = argparse.ArgumentParser(
+        description="Aggregate cross-run context link metrics from hook events."
+    )
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="Runs root directory")
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON output path")
     return parser.parse_args()

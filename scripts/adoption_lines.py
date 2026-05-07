@@ -5,15 +5,11 @@ import argparse
 import fnmatch
 import json
 import subprocess
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -54,7 +50,9 @@ def resolve_worktree(worktree: str) -> Path:
 def resolve_commit(repo: Path, ref: str, label: str) -> str:
     result = git(repo, "rev-parse", "--verify", f"{ref}^{{commit}}")
     if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip() or f"failed to resolve {label}: {ref}"
+        message = (
+            result.stderr.strip() or result.stdout.strip() or f"failed to resolve {label}: {ref}"
+        )
         raise RuntimeError(message)
     return result.stdout.strip()
 
@@ -79,7 +77,9 @@ def allowed_paths_for_run(run_path: Path, task_id: str) -> list[str] | None:
     if not isinstance(scope, dict):
         return None
     allowed_paths = scope.get("allowed_paths")
-    if not isinstance(allowed_paths, list) or not all(isinstance(path, str) for path in allowed_paths):
+    if not isinstance(allowed_paths, list) or not all(
+        isinstance(path, str) for path in allowed_paths
+    ):
         return None
     return allowed_paths
 
@@ -104,7 +104,9 @@ def matches_allowed_path(path: str, allowed_paths: list[str] | None) -> bool:
     return False
 
 
-def added_lines_by_file(patch: str, allowed_paths: list[str] | None = None) -> dict[str, Counter[str]]:
+def added_lines_by_file(
+    patch: str, allowed_paths: list[str] | None = None
+) -> dict[str, Counter[str]]:
     lines: dict[str, Counter[str]] = defaultdict(Counter)
     current_file: str | None = None
     in_hunk = False
@@ -135,10 +137,16 @@ def added_lines_by_file(patch: str, allowed_paths: list[str] | None = None) -> d
     return dict(lines)
 
 
-def diff_added_lines(repo: Path, base_ref: str, target_ref: str, allowed_paths: list[str] | None) -> dict[str, Counter[str]]:
+def diff_added_lines(
+    repo: Path, base_ref: str, target_ref: str, allowed_paths: list[str] | None
+) -> dict[str, Counter[str]]:
     result = git(repo, "diff", "--unified=0", base_ref, target_ref)
     if result.returncode != 0:
-        message = result.stderr.strip() or result.stdout.strip() or f"failed to diff {base_ref}..{target_ref}"
+        message = (
+            result.stderr.strip()
+            or result.stdout.strip()
+            or f"failed to diff {base_ref}..{target_ref}"
+        )
         raise RuntimeError(message)
     return added_lines_by_file(result.stdout, allowed_paths)
 
@@ -183,14 +191,20 @@ def calculate_adoption(
     worktree = target.get("worktree")
     base_ref = target.get("base_ref")
     if not isinstance(worktree, str) or not worktree:
-        raise ValueError("run.target.worktree is not set. Run scripts/prepare_run.py first.")
+        raise ValueError(
+            "run.target.worktree is not set. Run `python -m scripts.prepare_run` first."
+        )
     if not isinstance(base_ref, str) or not base_ref:
         raise ValueError("run.target.base_ref is not set.")
 
     repo = resolve_worktree(worktree)
     resolved_base = resolve_commit(repo, base_ref, "base_ref")
-    resolved_candidate = resolve_commit(repo, required_ref(run, "candidate_ref", candidate_ref), "candidate_ref")
-    resolved_accepted = resolve_commit(repo, required_ref(run, "accepted_ref", accepted_ref), "accepted_ref")
+    resolved_candidate = resolve_commit(
+        repo, required_ref(run, "candidate_ref", candidate_ref), "candidate_ref"
+    )
+    resolved_accepted = resolve_commit(
+        repo, required_ref(run, "accepted_ref", accepted_ref), "accepted_ref"
+    )
     allowed_paths = allowed_paths_for_run(run_path, str(run.get("task_id") or ""))
 
     candidate_lines = diff_added_lines(repo, resolved_base, resolved_candidate, allowed_paths)
@@ -217,11 +231,23 @@ def calculate_adoption(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Calculate line-level adoption from candidate and accepted commits.")
+    parser = argparse.ArgumentParser(
+        description="Calculate line-level adoption from candidate and accepted commits."
+    )
     parser.add_argument("--run", required=True, type=Path, help="Path to run.json")
-    parser.add_argument("--candidate-ref", default=None, help="AI candidate commit/ref. Defaults to run.json adoption field.")
-    parser.add_argument("--accepted-ref", default=None, help="Final accepted commit/ref. Defaults to run.json adoption field.")
-    parser.add_argument("--write", action="store_true", help="Write adoption fields back to run.json")
+    parser.add_argument(
+        "--candidate-ref",
+        default=None,
+        help="AI candidate commit/ref. Defaults to run.json adoption field.",
+    )
+    parser.add_argument(
+        "--accepted-ref",
+        default=None,
+        help="Final accepted commit/ref. Defaults to run.json adoption field.",
+    )
+    parser.add_argument(
+        "--write", action="store_true", help="Write adoption fields back to run.json"
+    )
     return parser.parse_args()
 
 
