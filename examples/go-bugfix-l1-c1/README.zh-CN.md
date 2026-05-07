@@ -45,7 +45,7 @@ score.json            review 分、结构化 review 备注和最终分
 
 ```bash
 python scripts/prepare_run.py --workflow baseline --task go-bugfix-l1-c1 --run-id demo-002
-python scripts/execute_run.py \
+python scripts/collect_run.py \
   --task benchmarks/tasks/go-bugfix-l1-c1/task.json \
   --run runs/baseline/go-bugfix-l1-c1/demo-002/run.json \
   --write

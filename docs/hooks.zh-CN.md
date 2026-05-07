@@ -2,7 +2,7 @@
 
 [英文版](hooks.md)
 
-Hook 是可选的过程证据层，用来记录 coding 过程中发生了什么。它不负责评分，也不替代 `execute_run.py`。
+Hook 是可选的过程证据层，用来记录 coding 过程中发生了什么。它不负责评分，也不替代 `collect_run.py`。
 
 整体形态刻意保持简单：
 
@@ -126,7 +126,7 @@ python scripts/summarize_run_events.py \
   --write
 ```
 
-`execute_run.py --write` 发现 `events.jsonl` 时也会自动汇总一次。
+`collect_run.py --write` 发现 `events.jsonl` 时也会自动汇总一次。
 
 会自动派生：
 

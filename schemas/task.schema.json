@@ -121,7 +121,7 @@
           }
         }
       },
-      "description": "Optional path allowlist used by execute_run.py to detect unrelated file changes."
+      "description": "Optional path allowlist used by collect_run.py to detect unrelated file changes."
     },
     "scoring_weights": {
       "type": "object",

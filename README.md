@@ -41,7 +41,7 @@ prepare_run creates isolated target worktree
         ->
 AI/human coding modifies runs/.../target
         ->
-execute_run collects tests, diff, and scope facts
+collect_run collects tests, diff, and scope facts
         ->
 manual review or llm_review_run writes score.json
         ->
@@ -57,26 +57,40 @@ dashboard = read-only comparison projection
 
 ## Quick Start
 
-After adding a public reproducible task under `benchmarks/tasks/`, prepare an isolated target worktree:
+After adding a public reproducible task under `benchmarks/tasks/`, use the shortcut CLI for the shortest scored loop.
+
+1. Prepare a run and enter its isolated target worktree:
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id> --model <model>
+python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
+cd "$(python scripts/eval.py target)"
 ```
 
-Run the AI or human workflow against the prepared `runs/.../target` worktree. Use `runs/<workflow>/<task-id>/<run-id>/task.md` as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
+Run the AI or human workflow against the prepared target worktree. Use the `task.md` copied into the run directory as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
 
-For optional hook-based process evidence with Claude Code or Codex, export the `AI_EVAL_*` variables printed by `prepare_run.py`, start the agent from `runs/.../target`, and see [docs/hooks.md](docs/hooks.md).
+<details>
+<summary><strong>Optional:</strong> collect hook-based process evidence</summary>
 
-After coding finishes, collect test and diff evidence:
+Run this before starting Claude Code or Codex:
 
 ```bash
-python scripts/execute_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --write
+eval "$(python scripts/eval.py env)"
 ```
 
-Optional adoption evidence: if you want line-level adoption metrics, have the AI workflow or reviewer commit the candidate result, then compare that candidate commit with the final accepted commit. This is a link-diagnostic metric only; it does not affect `score.json`.
+This improves `process_evidence` and link metrics, but the run can be scored without it. See [docs/hooks.md](docs/hooks.md).
+
+</details>
+
+2. After coding finishes, collect test and diff evidence:
+
+```bash
+python scripts/eval.py collect
+```
+
+<details>
+<summary><strong>Optional:</strong> calculate adoption metrics</summary>
+
+If you want line-level adoption metrics, have the AI workflow or reviewer commit the candidate result, then compare that candidate commit with the final accepted commit. This is a link-diagnostic metric only; it does not affect `score.json`.
 
 ```bash
 cd runs/<workflow>/<task-id>/<run-id>/target
@@ -88,69 +102,66 @@ git rev-parse HEAD
 After the final accepted version exists as a commit:
 
 ```bash
-python scripts/adoption_lines.py \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+python scripts/eval.py adoption \
   --candidate-ref <candidate-sha> \
-  --accepted-ref <accepted-sha> \
-  --write
+  --accepted-ref <accepted-sha>
 ```
 
 `candidate_ref` is the AI candidate commit. `accepted_ref` is the final accepted commit. `target.solution_ref` remains a reference solution and is not used as the default adoption source.
 
-Optional review aid: if the task has `target.solution_ref`, inspect the candidate worktree against the reference implementation before scoring. The helper respects `task.scope.allowed_paths` when present, prints a reviewer-friendly diff view with per-file headers and line numbers, and highlights candidate-side lines with a red background and reference-side lines with a green background. This is only context for reviewers; do not score a run by similarity to the reference solution.
+</details>
+
+<details>
+<summary><strong>Optional:</strong> inspect reference solution diff</summary>
+
+If the task has `target.solution_ref`, inspect the candidate worktree against the reference implementation before scoring. The helper respects `task.scope.allowed_paths` when present, prints a reviewer-friendly diff view with per-file headers and line numbers, and highlights candidate-side lines with a red background and reference-side lines with a green background.
 
 ```bash
-python scripts/show_solution_diff.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --color auto
+python scripts/eval.py solution-diff --color auto
 ```
 
-Choose one review path before calculating the final score.
+This is only context for reviewers; do not score a run by similarity to the reference solution.
 
-Manual path: pass the six review scores directly. This creates or updates `score.json` and calculates the final score in one step. Each review value must be from `0.0` to `1.0`. Omit `--manual-hard-gate` unless a reviewer explicitly wants to cap the run:
+</details>
+
+3. Choose one review path before calculating the final score.
+
+Manual path, recommended for the first run: pass the six review scores directly. This creates or updates `score.json` and calculates the final score in one step. Each review value must be from `0.0` to `1.0`. Omit `--manual-hard-gate` unless a reviewer explicitly wants to cap the run:
 
 ```bash
-python scripts/score_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --score runs/<workflow>/<task-id>/<run-id>/score.json \
+python scripts/eval.py score \
   --set-review \
     correctness=1.0 \
     regression_safety=1.0 \
     maintainability=0.8 \
     test_quality=0.8 \
     security=1.0 \
-    process_compliance=0.6 \
-  --write
+    process_compliance=0.6
 ```
 
-If a manual hard gate is needed, add `--manual-hard-gate public_api_break`. `score_run.py --init` is still available for reviewers who prefer editing a draft JSON file by hand.
+If a manual hard gate is needed, add `--manual-hard-gate public_api_break`. `python scripts/eval.py score --init` is still available for reviewers who prefer editing a draft JSON file by hand.
 
-LLM path: use an OpenAI-compatible reviewer to create `score.json` and calculate the final score in one step:
+LLM review path: use an OpenAI-compatible reviewer to create `score.json` and calculate the final score in one step:
 
 ```bash
 AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
-python scripts/llm_review_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --write
+python scripts/eval.py llm-review
 ```
 
 For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepseek.com` and pass `--api-key-env DEEPSEEK_API_KEY`.
 
-Generate a terminal report:
+4. Generate a report or dashboard:
 
 ```bash
-python scripts/report.py --runs runs
+python scripts/eval.py report
+python scripts/eval.py dashboard
 ```
 
-Generate a static comparison dashboard:
+`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
 
-```bash
-python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
-```
+<details>
+<summary><strong>Optional:</strong> generate context link metrics</summary>
 
 Generate cross-run context link metrics from hook evidence:
 
@@ -158,7 +169,24 @@ Generate cross-run context link metrics from hook evidence:
 python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
 ```
 
-`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results. Link metrics require hook events; runs without non-empty `events.jsonl` are excluded from their denominator.
+This is a cross-run diagnostic view only. Link metrics require hook events; runs without non-empty `events.jsonl` are excluded from their denominator.
+
+</details>
+
+`scripts/eval.py` does not add a new evaluation protocol. It only remembers the latest run in `runs/.current.json` and resolves `task.json`, `run.json`, and `score.json` paths for you. For parallel experiments, pass `--run-dir runs/<workflow>/<task-id>/<run-id>` to `collect`, `score`, `llm-review`, `solution-diff`, or `adoption`.
+
+## Advanced Low-Level Commands
+
+The shortcut CLI is a thin wrapper around the stable primitives. Use these when debugging, scripting CI, or operating on a run without `runs/.current.json`:
+
+```bash
+python scripts/prepare_run.py --workflow <workflow> --task <task-id> [--model <model>]
+python scripts/collect_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
+python scripts/score_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --score runs/<workflow>/<task-id>/<run-id>/score.json --set-review correctness=1.0 regression_safety=1.0 maintainability=0.8 test_quality=0.8 security=1.0 process_compliance=0.6 --write
+python scripts/llm_review_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
+python scripts/report.py --runs runs
+python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+```
 
 See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
 

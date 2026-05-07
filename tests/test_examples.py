@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from scripts.execute_run import load_json
+from scripts.collect_run import load_json
 
 
 EXAMPLE_ROOT = Path("examples/go-bugfix-l1-c1")

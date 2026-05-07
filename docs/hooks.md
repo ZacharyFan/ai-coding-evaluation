@@ -2,7 +2,7 @@
 
 [Chinese version](hooks.zh-CN.md)
 
-Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `execute_run.py`.
+Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `collect_run.py`.
 
 The shape is intentionally simple:
 
@@ -126,7 +126,7 @@ python scripts/summarize_run_events.py \
   --write
 ```
 
-`execute_run.py --write` also summarizes automatically when `events.jsonl` exists.
+`collect_run.py --write` also summarizes automatically when `events.jsonl` exists.
 
 Derived fields include:
 

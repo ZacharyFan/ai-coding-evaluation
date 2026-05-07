@@ -25,7 +25,7 @@ Each `task.json` can include:
 
 `base_ref` matters. Without a fixed starting revision, two workflow runs are not really comparable. Public benchmark tasks under `benchmarks/tasks/` must use a cloneable Git URL and a full commit SHA. Local filesystem paths are reserved for `benchmarks/local/` experiments and templates.
 
-`solution_ref` is optional and informational. It can point to a reference implementation commit for reviewers, but it is not the only valid solution and is not used by `prepare_run.py`, `execute_run.py`, `score_run.py`, or reports.
+`solution_ref` is optional and informational. It can point to a reference implementation commit for reviewers, but it is not the only valid solution and is not used by `prepare_run.py`, `collect_run.py`, `score_run.py`, or reports.
 
 ## Examples
 
@@ -95,6 +95,6 @@ Rust:
 
 ## Current Boundary
 
-`prepare_run.py` clones the target repo into an isolated run worktree and checks out `target.base_ref`. `execute_run.py` then runs setup and test commands inside that prepared worktree and records `test.log`, `diff.patch`, and mechanical run facts.
+`prepare_run.py` clones the target repo into an isolated run worktree and checks out `target.base_ref`. `collect_run.py` then runs setup and test commands inside that prepared worktree and records `test.log`, `diff.patch`, and mechanical run facts.
 
 Put the exact commands in `target.test_commands` and mirror them in `tests.sh` when the task needs a single executable entrypoint.

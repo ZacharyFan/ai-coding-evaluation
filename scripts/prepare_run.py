@@ -166,7 +166,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd")
     parser.add_argument("--task", required=True, help="Task id, matching benchmarks/tasks/{id}")
     parser.add_argument("--run-id", default=None, help="Run id. Defaults to UTC timestamp.")
-    parser.add_argument("--model", default=None, help="Model id used by this run, such as gpt-5.5 or claude-sonnet-4.5")
+    parser.add_argument("--model", default=None, help="Optional model label for run.json, such as gpt-5.5 or claude-sonnet-4.5")
     return parser.parse_args()
 
 
@@ -194,7 +194,7 @@ def main() -> None:
     print("export AI_EVAL_PHASE=coding")
     print()
     print("After the workflow modifies the target worktree, collect evidence with:")
-    print("python scripts/execute_run.py \\")
+    print("python scripts/collect_run.py \\")
     print(f"  --task benchmarks/tasks/{args.task}/task.json \\")
     print(f"  --run {run_dir / 'run.json'} \\")
     print("  --write")
