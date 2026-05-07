@@ -15,25 +15,36 @@ Claude/Codex hook input -> record_hook_event.py -> events.jsonl -> summarize_run
 先准备一次 run：
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id>
+python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
 ```
 
-启动 coding agent 前，导出 `prepare_run.py` 打印的运行环境：
+启动 coding agent 前，先导出当前 run 环境：
 
 ```bash
-export AI_EVAL_REPO=/path/to/ai-coding-evaluation
-export AI_EVAL_RUN_DIR=/path/to/ai-coding-evaluation/runs/<workflow>/<task-id>/<run-id>
-export AI_EVAL_TARGET_WORKTREE=$AI_EVAL_RUN_DIR/target
-export AI_EVAL_PHASE=coding
+eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
 ```
 
-然后从准备好的 target worktree 启动 Claude Code 或 Codex：
+如果你已经在 evaluation 仓库中，短写法等价：
+
+```bash
+eval "$(python scripts/eval.py env)"
+```
+
+`eval.py env` 会输出绝对路径，所以导出的环境变量在 `cd` 到 target worktree 后仍然有效。也可以在 evaluation 仓库外执行：
+
+```bash
+python /absolute/path/to/ai-coding-evaluation/scripts/eval.py --repo /absolute/path/to/ai-coding-evaluation env
+```
+
+然后从同一个 shell 启动 Claude Code 或 Codex：
 
 ```bash
 cd "$AI_EVAL_TARGET_WORKTREE"
 ```
 
-Coding prompt 使用 `$AI_EVAL_RUN_DIR/task.md`；如果偏好中文，使用 `$AI_EVAL_RUN_DIR/task.zh-CN.md`。`acceptance.md` 是 reviewer-only 文件，不会复制到 run 目录。
+agent 必须在 `eval` 之后启动，hook 进程才能继承 `AI_EVAL_REPO`、`AI_EVAL_RUN_DIR`、`AI_EVAL_TARGET_WORKTREE` 和 `AI_EVAL_PHASE`。环境变量不会 retroactively 影响已经启动的 Codex 或 Claude session。
+
+Coding prompt 使用复制到 run 目录下的任务文件：`runs/<workflow>/<task-id>/<run-id>/task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 是 reviewer-only 文件，不会复制到 run 目录。
 
 ## Codex
 
@@ -44,7 +55,7 @@ Codex hooks 需要开启 feature flag：
 codex_hooks = true
 ```
 
-可以把 `integrations/codex/config.example.toml` 和 `integrations/codex/hooks.example.json` 复制到 `~/.codex/config.toml`、`~/.codex/hooks.json`，也可以放到项目本地 `.codex/` 配置中。
+可以把 `integrations/codex/config.example.toml` 和 `integrations/codex/hooks.example.json` 作为 Codex 配置模板。hook command 会使用 `$AI_EVAL_REPO`，所以启动 Codex 前必须先执行 `eval "$(python .../scripts/eval.py env)"`。
 
 模板会记录：
 

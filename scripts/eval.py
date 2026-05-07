@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SCRIPT_ROOT = Path(__file__).resolve().parents[1]
+if str(SCRIPT_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_ROOT))
 
 from scripts import dashboard as dashboard_module
 from scripts import llm_review_run as llm_review_module
@@ -38,6 +38,43 @@ def current_path(root: Path) -> Path:
     return root / "runs" / ".current.json"
 
 
+def looks_like_eval_repo(path: Path) -> bool:
+    return (path / "benchmarks" / "tasks").exists()
+
+
+def looks_like_current_eval_repo(path: Path) -> bool:
+    return looks_like_eval_repo(path) and current_path(path).exists()
+
+
+def find_repo_from_cwd(cwd: Path) -> Path | None:
+    for candidate in [cwd.resolve(), *cwd.resolve().parents]:
+        if looks_like_current_eval_repo(candidate):
+            return candidate
+    return None
+
+
+def resolve_root(repo_arg: Path | None = None) -> Path:
+    candidates: list[Path] = []
+    if repo_arg:
+        candidates.append(repo_arg)
+    env_repo = os.environ.get("AI_EVAL_REPO")
+    if env_repo:
+        candidates.append(Path(env_repo))
+    candidates.append(SCRIPT_ROOT)
+    cwd_repo = find_repo_from_cwd(Path.cwd())
+    if cwd_repo:
+        candidates.append(cwd_repo)
+
+    for candidate in candidates:
+        root = candidate.expanduser().resolve()
+        if looks_like_eval_repo(root):
+            return root
+
+    raise FileNotFoundError(
+        "evaluation repo not found. Pass --repo /path/to/ai-coding-evaluation or set AI_EVAL_REPO."
+    )
+
+
 def path_for_display(root: Path, path: Path) -> str:
     try:
         return str(path.resolve().relative_to(root.resolve()))
@@ -56,7 +93,7 @@ def run_dir_from_current(root: Path) -> Path:
     if not path.exists():
         raise FileNotFoundError(
             "no current run found. Run `python scripts/eval.py start --workflow <workflow> --task <task-id>` first, "
-            "or pass --run-dir."
+            "or pass --repo /path/to/ai-coding-evaluation and --run-dir runs/<workflow>/<task-id>/<run-id>."
         )
     current = load_json(path)
     run_dir = current.get("run_dir")
@@ -129,9 +166,9 @@ def shell_env(root: Path, run_dir: Path | None = None) -> str:
     resolved = resolve_run_dir(root, run_dir)
     target = target_path(root, resolved)
     values = {
-        "AI_EVAL_REPO": str(root),
-        "AI_EVAL_RUN_DIR": str(resolved),
-        "AI_EVAL_TARGET_WORKTREE": target,
+        "AI_EVAL_REPO": str(root.resolve()),
+        "AI_EVAL_RUN_DIR": str(resolved.resolve()),
+        "AI_EVAL_TARGET_WORKTREE": str(Path(target).resolve()),
         "AI_EVAL_PHASE": "coding",
     }
     return "\n".join(f"export {key}={shlex.quote(value)}" for key, value in values.items()) + "\n"
@@ -262,6 +299,7 @@ def add_run_dir_arg(parser: argparse.ArgumentParser) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Shortcut CLI for the AI coding evaluation workflow.")
+    parser.add_argument("--repo", type=Path, default=None, help="Evaluation repo root. Defaults to AI_EVAL_REPO or this script's repo.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     start = subparsers.add_parser("start", help="Prepare a run and set runs/.current.json")
@@ -323,31 +361,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
+    root = resolve_root(args.repo)
     try:
         if args.command == "start":
-            result = start_run(ROOT, args.workflow, args.task, run_id=args.run_id, model=args.model)
+            result = start_run(root, args.workflow, args.task, run_id=args.run_id, model=args.model)
             print(json.dumps(result, indent=2, sort_keys=True))
             print()
-            print('Next: cd "$(python scripts/eval.py target)"')
+            print("Next:")
+            eval_script = root / "scripts" / "eval.py"
+            print(f'eval "$({shlex.quote(sys.executable)} {shlex.quote(str(eval_script))} env)"')
+            print('cd "$AI_EVAL_TARGET_WORKTREE"')
             print("Use task.md in the run directory as the coding prompt. Do not read acceptance.md during coding.")
             return
         if args.command == "current":
-            run_dir = resolve_run_dir(ROOT, args.run_dir)
-            print(json.dumps(current_metadata(ROOT, run_dir), indent=2, sort_keys=True))
+            run_dir = resolve_run_dir(root, args.run_dir)
+            print(json.dumps(current_metadata(root, run_dir), indent=2, sort_keys=True))
             return
         if args.command == "target":
-            print(target_path(ROOT, args.run_dir))
+            print(target_path(root, args.run_dir))
             return
         if args.command == "env":
-            print(shell_env(ROOT, args.run_dir), end="")
+            print(shell_env(root, args.run_dir), end="")
             return
         if args.command == "collect":
-            result = collect_run(ROOT, args.run_dir, reset_to_base=args.reset_to_base, expect_fail=args.expect_fail)
+            result = collect_run(root, args.run_dir, reset_to_base=args.reset_to_base, expect_fail=args.expect_fail)
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "score":
             result = score_manual_run(
-                ROOT,
+                root,
                 args.run_dir,
                 assignments=args.set_review,
                 manual_hard_gates=args.manual_hard_gates,
@@ -357,7 +399,7 @@ def main(argv: list[str] | None = None) -> None:
             return
         if args.command == "llm-review":
             result = llm_review_shortcut(
-                ROOT,
+                root,
                 args.run_dir,
                 score_file=args.score_file,
                 base_url=args.base_url,
@@ -370,17 +412,17 @@ def main(argv: list[str] | None = None) -> None:
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "solution-diff":
-            print(solution_diff(ROOT, args.run_dir, color=args.color), end="")
+            print(solution_diff(root, args.run_dir, color=args.color), end="")
             return
         if args.command == "adoption":
-            result = adoption_run(ROOT, args.run_dir, candidate_ref=args.candidate_ref, accepted_ref=args.accepted_ref)
+            result = adoption_run(root, args.run_dir, candidate_ref=args.candidate_ref, accepted_ref=args.accepted_ref)
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "report":
-            print_report(ROOT, args.runs)
+            print_report(root, args.runs)
             return
         if args.command == "dashboard":
-            for path in write_dashboard(ROOT, args.runs, args.tasks, args.output, args.zh_output):
+            for path in write_dashboard(root, args.runs, args.tasks, args.output, args.zh_output):
                 print(path)
             return
         raise ValueError(f"unsupported command: {args.command}")

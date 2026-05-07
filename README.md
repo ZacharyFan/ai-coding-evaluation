@@ -59,27 +59,32 @@ dashboard = read-only comparison projection
 
 After adding a public reproducible task under `benchmarks/tasks/`, use the shortcut CLI for the shortest scored loop.
 
-1. Prepare a run and enter its isolated target worktree:
+1. Prepare a run:
 
 ```bash
 python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
-cd "$(python scripts/eval.py target)"
 ```
-
-Run the AI or human workflow against the prepared target worktree. Use the `task.md` copied into the run directory as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
 
 <details>
 <summary><strong>Optional:</strong> collect hook-based process evidence</summary>
 
-Run this before starting Claude Code or Codex:
+Before starting Claude Code or Codex, export the current run environment:
 
 ```bash
-eval "$(python scripts/eval.py env)"
+eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
 ```
 
-This improves `process_evidence` and link metrics, but the run can be scored without it. See [docs/hooks.md](docs/hooks.md).
+The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are already in the evaluation repo, `eval "$(python scripts/eval.py env)"` is equivalent. Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
 
 </details>
+
+Then enter the target worktree:
+
+```bash
+cd "$AI_EVAL_TARGET_WORKTREE"
+```
+
+Run the AI or human workflow against the prepared target worktree. Use the `task.md` copied into the run directory as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
 
 2. After coding finishes, collect test and diff evidence:
 

@@ -59,27 +59,32 @@ dashboard = 只读的对比投影
 
 先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后用快捷 CLI 走最短评分闭环。
 
-1. 准备一次 run，并进入隔离的 target worktree：
+1. 准备一次 run：
 
 ```bash
 python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
-cd "$(python scripts/eval.py target)"
 ```
-
-AI 或人工 workflow 修改准备好的 target worktree。Coding prompt 使用复制到 run 目录下的 `task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
 
 <details>
 <summary><strong>可选：</strong>采集 hook 过程证据</summary>
 
-启动 Claude Code 或 Codex 前执行：
+启动 Claude Code 或 Codex 前，先导出当前 run 环境：
 
 ```bash
-eval "$(python scripts/eval.py env)"
+eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
 ```
 
-它会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你已经在 evaluation 仓库中，`eval "$(python scripts/eval.py env)"` 等价。Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
 
 </details>
+
+然后进入 target worktree：
+
+```bash
+cd "$AI_EVAL_TARGET_WORKTREE"
+```
+
+AI 或人工 workflow 修改准备好的 target worktree。Coding prompt 使用复制到 run 目录下的 `task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
 
 2. coding 完成后，采集测试和 diff 证据：
 
