@@ -3,7 +3,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.score_run import apply_manual_review, init_score_doc, parse_review_assignment, score_run, write_initialized_score
+from scripts.score_run import (
+    apply_manual_review,
+    init_score_doc,
+    parse_review_assignment,
+    score_run,
+    write_initialized_score,
+)
 
 
 def base_task():
@@ -243,7 +249,8 @@ def test_score_run_cli_sets_manual_review_and_scores_in_one_step(tmp_path):
     result = subprocess.run(
         [
             sys.executable,
-            str(repo_root / "scripts" / "score_run.py"),
+            "-m",
+            "scripts.score_run",
             "--task",
             str(task_path),
             "--run",

@@ -7,7 +7,9 @@ from scripts.record_hook_event import handle_hook_event, normalize_hook_event, r
 
 
 def read_events(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
 
 
 def test_codex_post_tool_use_writes_standard_event(tmp_path, monkeypatch):

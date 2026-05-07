@@ -11,3 +11,4 @@ benchmarks/local/*
 !benchmarks/local/README.zh-CN.md
 
 .references/
+.ruff_cache/

@@ -243,7 +243,9 @@ def test_collect_run_uses_prepared_worktree_from_run_json(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
-    task_path, run_path = write_task_and_run(tmp_path, tmp_path / "missing-local-path", base_ref, command)
+    task_path, run_path = write_task_and_run(
+        tmp_path, tmp_path / "missing-local-path", base_ref, command
+    )
     run = load_json(run_path)
     run["target"] = {
         "repo": "https://github.com/owner/repo.git",
@@ -309,7 +311,7 @@ def test_collect_run_requires_prepare_run_for_remote_target_without_worktree(tmp
     repo, base_ref = init_target_repo(tmp_path)
     task_path, run_path = write_remote_task_and_run_without_worktree(tmp_path, base_ref)
 
-    with pytest.raises(RuntimeError, match="run scripts/prepare_run.py first"):
+    with pytest.raises(RuntimeError, match="run `python -m scripts.prepare_run` first"):
         collect_run(task_path, run_path)
 
 

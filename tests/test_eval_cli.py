@@ -10,6 +10,9 @@ import pytest
 
 from scripts import eval as eval_module
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+WRAPPER = REPO_ROOT / "bin" / "ai-eval"
+
 
 def run_git(repo: Path, *args: str) -> str:
     result = subprocess.run(
@@ -97,7 +100,9 @@ def manual_review_assignments() -> list[str]:
 def test_start_creates_run_and_current_pointer(tmp_path):
     root, _ = init_eval_root(tmp_path)
 
-    metadata = eval_module.start_run(root, "baseline", "example-task", run_id="demo-001", model="gpt-5.5")
+    metadata = eval_module.start_run(
+        root, "baseline", "example-task", run_id="demo-001", model="gpt-5.5"
+    )
 
     current = json.loads((root / "runs" / ".current.json").read_text(encoding="utf-8"))
     run_dir = root / "runs" / "baseline" / "example-task" / "demo-001"
@@ -122,7 +127,9 @@ def test_target_and_env_use_current_pointer(tmp_path):
 
     assert target == str(root / "runs" / "baseline" / "example-task" / "demo-001" / "target")
     assert f"export AI_EVAL_REPO={root}" in env
-    assert f"export AI_EVAL_RUN_DIR={root / 'runs' / 'baseline' / 'example-task' / 'demo-001'}" in env
+    assert (
+        f"export AI_EVAL_RUN_DIR={root / 'runs' / 'baseline' / 'example-task' / 'demo-001'}" in env
+    )
     assert f"export AI_EVAL_TARGET_WORKTREE={target}" in env
     assert "export AI_EVAL_PHASE=coding" in env
 
@@ -134,8 +141,14 @@ def test_env_uses_absolute_paths(tmp_path):
     env = eval_module.shell_env(root)
 
     assert f"export AI_EVAL_REPO={root.resolve()}" in env
-    assert f"export AI_EVAL_RUN_DIR={(root / 'runs' / 'baseline' / 'example-task' / 'demo-001').resolve()}" in env
-    assert f"export AI_EVAL_TARGET_WORKTREE={(root / 'runs' / 'baseline' / 'example-task' / 'demo-001' / 'target').resolve()}" in env
+    assert (
+        f"export AI_EVAL_RUN_DIR={(root / 'runs' / 'baseline' / 'example-task' / 'demo-001').resolve()}"
+        in env
+    )
+    assert (
+        f"export AI_EVAL_TARGET_WORKTREE={(root / 'runs' / 'baseline' / 'example-task' / 'demo-001' / 'target').resolve()}"
+        in env
+    )
 
 
 def test_env_can_run_with_repo_from_non_repo_cwd(tmp_path):
@@ -145,7 +158,7 @@ def test_env_can_run_with_repo_from_non_repo_cwd(tmp_path):
     outside.mkdir()
 
     process = subprocess.run(
-        [sys.executable, str(Path(eval_module.__file__).resolve()), "--repo", str(root), "env"],
+        [str(WRAPPER), "--repo", str(root), "env"],
         cwd=outside,
         capture_output=True,
         text=True,
@@ -161,9 +174,9 @@ def test_env_can_run_from_target_cwd_with_repo_env(tmp_path):
     eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")
     target = Path(eval_module.target_path(root))
 
-    env = {**os.environ, "AI_EVAL_REPO": str(root)}
+    env = {**os.environ, "AI_EVAL_REPO": str(root), "PYTHONPATH": str(REPO_ROOT)}
     process = subprocess.run(
-        [sys.executable, str(Path(eval_module.__file__).resolve()), "env"],
+        [sys.executable, "-m", "scripts.eval", "env"],
         cwd=target,
         env=env,
         capture_output=True,
@@ -184,8 +197,7 @@ def test_env_run_dir_override_works_from_non_repo_cwd(tmp_path):
 
     process = subprocess.run(
         [
-            sys.executable,
-            str(Path(eval_module.__file__).resolve()),
+            str(WRAPPER),
             "--repo",
             str(root),
             "env",
@@ -200,6 +212,20 @@ def test_env_run_dir_override_works_from_non_repo_cwd(tmp_path):
 
     assert process.returncode == 0
     assert f"export AI_EVAL_RUN_DIR={run_dir.resolve()}" in process.stdout
+
+
+def test_module_entrypoints_show_help():
+    for module in ("scripts.eval", "scripts.prepare_run"):
+        process = subprocess.run(
+            [sys.executable, "-m", module, "--help"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert process.returncode == 0
+        assert "usage:" in process.stdout
 
 
 def test_collect_uses_current_pointer(tmp_path):
@@ -249,7 +275,7 @@ def test_run_dir_override_ignores_current_pointer(tmp_path):
 def test_missing_current_pointer_has_clear_error(tmp_path):
     root = tmp_path / "evaluation"
 
-    with pytest.raises(FileNotFoundError, match="python scripts/eval.py start"):
+    with pytest.raises(FileNotFoundError, match="python -m scripts.eval start"):
         eval_module.target_path(root)
 
 
@@ -262,6 +288,6 @@ def test_main_prints_clear_error_without_current_pointer(tmp_path, monkeypatch, 
 
     assert error.value.code == 1
     stderr = capsys.readouterr().err
-    assert "python scripts/eval.py start" in stderr
+    assert "python -m scripts.eval start" in stderr
     assert "--repo /path/to/ai-coding-evaluation" in stderr
     assert "--run-dir runs/<workflow>/<task-id>/<run-id>" in stderr

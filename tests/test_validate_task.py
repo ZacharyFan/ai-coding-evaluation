@@ -5,7 +5,6 @@ import pytest
 
 from scripts.validate_task import expand_task_dirs, validate_task_dir
 
-
 FULL_SHA = "638f94be75c448179ecf434e103eecc34c531059"
 
 
@@ -200,7 +199,9 @@ def test_scope_allowed_paths_must_be_non_empty_strings(tmp_path):
 
     errors = validate_task_dir(task_dir)
 
-    assert any("scope.allowed_paths must contain only non-empty strings" in error for error in errors)
+    assert any(
+        "scope.allowed_paths must contain only non-empty strings" in error for error in errors
+    )
 
 
 def test_scope_allowed_paths_reject_absolute_or_parent_paths(tmp_path):
@@ -257,7 +258,17 @@ def test_official_task_rejects_local_target_repo(tmp_path):
 def test_official_task_accepts_remote_git_url_with_full_sha(tmp_path, repo):
     root = tmp_path / "benchmarks" / "tasks"
     task_dir = root / "task"
-    write_task(task_dir, valid_task_json(target={"repo": repo, "base_ref": FULL_SHA, "language": "go", "test_commands": ["./tests.sh"]}))
+    write_task(
+        task_dir,
+        valid_task_json(
+            target={
+                "repo": repo,
+                "base_ref": FULL_SHA,
+                "language": "go",
+                "test_commands": ["./tests.sh"],
+            }
+        ),
+    )
 
     errors = validate_task_dir(task_dir)
 
@@ -304,7 +315,10 @@ def test_official_task_rejects_floating_or_short_solution_ref(tmp_path, solution
 
     errors = validate_task_dir(task_dir)
 
-    assert any("official tasks must pin target.solution_ref to a full commit SHA when present" in error for error in errors)
+    assert any(
+        "official tasks must pin target.solution_ref to a full commit SHA when present" in error
+        for error in errors
+    )
 
 
 @pytest.mark.parametrize("base_ref", ["main", "master", "v1.2.3", "abc123"])
@@ -325,7 +339,9 @@ def test_official_task_rejects_floating_or_short_base_ref(tmp_path, base_ref):
 
     errors = validate_task_dir(task_dir)
 
-    assert any("official tasks must pin target.base_ref to a full commit SHA" in error for error in errors)
+    assert any(
+        "official tasks must pin target.base_ref to a full commit SHA" in error for error in errors
+    )
 
 
 def test_local_task_allows_local_target_repo(tmp_path):
@@ -382,5 +398,10 @@ def test_context_sources_reject_unknown_type_or_unsafe_glob(tmp_path):
     errors = validate_task_dir(task_dir)
 
     assert any("context_sources.type must be one of" in error for error in errors)
-    assert any("context_sources.path_globs must be repo-relative paths" in error for error in errors)
-    assert any("context_sources.tool_names must contain only non-empty strings" in error for error in errors)
+    assert any(
+        "context_sources.path_globs must be repo-relative paths" in error for error in errors
+    )
+    assert any(
+        "context_sources.tool_names must contain only non-empty strings" in error
+        for error in errors
+    )

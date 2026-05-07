@@ -9,12 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RED_BACKGROUND = "\033[41m"
 GREEN_BACKGROUND = "\033[42m"
 RESET = "\033[0m"
-HUNK_HEADER_PATTERN = re.compile(r"^@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@")
+HUNK_HEADER_PATTERN = re.compile(
+    r"^@@ -(?P<old_start>\d+)(?:,(?P<old_count>\d+))? \+(?P<new_start>\d+)(?:,(?P<new_count>\d+))? @@"
+)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -28,7 +29,9 @@ def resolve_worktree(worktree: str) -> Path:
         path = ROOT / path
     path = path.resolve()
     if not path.exists():
-        raise FileNotFoundError(f"prepared target worktree does not exist: {path}. Run scripts/prepare_run.py first.")
+        raise FileNotFoundError(
+            f"prepared target worktree does not exist: {path}. Run `python -m scripts.prepare_run` first."
+        )
     if not (path / ".git").exists():
         raise RuntimeError(f"prepared target worktree must be a git repository: {path}")
     return path
@@ -144,7 +147,18 @@ def render_review_diff(patch: str, *, enabled: bool) -> str:
             continue
         if current_path is None:
             continue
-        if line.startswith(("index ", "similarity index ", "rename from ", "rename to ", "new file mode ", "deleted file mode ", "--- ", "+++ ")):
+        if line.startswith(
+            (
+                "index ",
+                "similarity index ",
+                "rename from ",
+                "rename to ",
+                "new file mode ",
+                "deleted file mode ",
+                "--- ",
+                "+++ ",
+            )
+        ):
             continue
         current_lines.append(line)
 
@@ -167,7 +181,9 @@ def scoped_diff_args(task: dict[str, Any], solution_ref: str, *, stat: bool = Fa
         return args
 
     allowed_paths = scope.get("allowed_paths", [])
-    if not isinstance(allowed_paths, list) or not all(isinstance(path, str) and path for path in allowed_paths):
+    if not isinstance(allowed_paths, list) or not all(
+        isinstance(path, str) and path for path in allowed_paths
+    ):
         raise ValueError("task.scope.allowed_paths must be a list of non-empty strings")
     return [*args, "--", *allowed_paths]
 
@@ -192,7 +208,9 @@ def show_solution_diff(task_path: Path, run_path: Path, *, color: str = "auto") 
 
     worktree = run.get("target", {}).get("worktree")
     if not worktree:
-        raise ValueError("run.target.worktree is not set. Run scripts/prepare_run.py first.")
+        raise ValueError(
+            "run.target.worktree is not set. Run `python -m scripts.prepare_run` first."
+        )
 
     repo = resolve_worktree(worktree)
     stat = require_success(
@@ -221,9 +239,13 @@ def show_solution_diff(task_path: Path, run_path: Path, *, color: str = "auto") 
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Print the candidate-vs-reference solution diff for manual review.")
+    parser = argparse.ArgumentParser(
+        description="Print the candidate-vs-reference solution diff for manual review."
+    )
     parser.add_argument("--task", required=True, type=Path, help="Path to task.json")
-    parser.add_argument("--run", required=True, type=Path, help="Path to run.json with target.worktree")
+    parser.add_argument(
+        "--run", required=True, type=Path, help="Path to run.json with target.worktree"
+    )
     parser.add_argument(
         "--color",
         choices=["auto", "always", "never"],

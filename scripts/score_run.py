@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_GATE_CAPS = {
     "task_not_solved": 40,
     "security_issue": 50,
@@ -28,15 +27,15 @@ REVIEW_DIMENSIONS = (
 
 def review_hint() -> str:
     fields = " ".join(f"{dimension}=<0-1>" for dimension in REVIEW_DIMENSIONS)
-    return f"Use --set-review {fields} --write, or run scripts/llm_review_run.py to generate review scores first."
+    return f"Use --set-review {fields} --write, or run `python -m scripts.llm_review_run` to generate review scores first."
 
 
 def init_score_doc(run: dict[str, Any]) -> dict[str, Any]:
     return {
         "workflow_id": run.get("workflow_id", ""),
         "task_id": run.get("task_id", ""),
-        "review": {dimension: None for dimension in REVIEW_DIMENSIONS},
-        "review_sources": {dimension: "manual_pending" for dimension in REVIEW_DIMENSIONS},
+        "review": dict.fromkeys(REVIEW_DIMENSIONS),
+        "review_sources": dict.fromkeys(REVIEW_DIMENSIONS, "manual_pending"),
         "review_notes": {},
         "manual_hard_gates": [],
     }
@@ -76,7 +75,9 @@ def parse_review_assignment(value: str) -> tuple[str, float]:
     return key, score
 
 
-def apply_manual_review(score: dict[str, Any], assignments: list[str], hard_gates: list[str] | None) -> dict[str, Any]:
+def apply_manual_review(
+    score: dict[str, Any], assignments: list[str], hard_gates: list[str] | None
+) -> dict[str, Any]:
     updated = dict(score)
     updated["review"] = dict(updated.get("review", {}))
     updated["review_sources"] = dict(updated.get("review_sources", {}))
@@ -175,7 +176,11 @@ def apply_hard_gates(score: float, gates: set[str]) -> float:
 
 
 def score_run(task: dict[str, Any], run: dict[str, Any], score: dict[str, Any]) -> dict[str, Any]:
-    missing = [key for key in REVIEW_DIMENSIONS if key not in score.get("review", {}) or score["review"][key] is None]
+    missing = [
+        key
+        for key in REVIEW_DIMENSIONS
+        if key not in score.get("review", {}) or score["review"][key] is None
+    ]
     if missing:
         raise ValueError(
             f"review.{missing[0]} must be filled before scoring; "
@@ -203,9 +208,13 @@ def score_run(task: dict[str, Any], run: dict[str, Any], score: dict[str, Any]) 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Score one AI coding workflow run.")
     parser.add_argument("--task", type=Path, help="Path to task.json")
-    parser.add_argument("--run", type=Path, help="Path to run.json. Defaults to score.json sibling run.json.")
+    parser.add_argument(
+        "--run", type=Path, help="Path to run.json. Defaults to score.json sibling run.json."
+    )
     parser.add_argument("--score", required=True, type=Path, help="Path to score.json")
-    parser.add_argument("--init", action="store_true", help="Create a manual scoring draft score.json")
+    parser.add_argument(
+        "--init", action="store_true", help="Create a manual scoring draft score.json"
+    )
     parser.add_argument(
         "--set-review",
         nargs="+",
@@ -218,7 +227,9 @@ def parse_args() -> argparse.Namespace:
         dest="manual_hard_gates",
         help="Add a manual hard gate such as public_api_break. Repeat for multiple gates.",
     )
-    parser.add_argument("--write", action="store_true", help="Write score fields back to score.json")
+    parser.add_argument(
+        "--write", action="store_true", help="Write score fields back to score.json"
+    )
     return parser.parse_args()
 
 

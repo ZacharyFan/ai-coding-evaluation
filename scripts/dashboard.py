@@ -4,16 +4,11 @@ from __future__ import annotations
 import argparse
 import html
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.dashboard_i18n import LOCALES
 from scripts.context_metrics import collect_context_metrics_from_run_paths
+from scripts.dashboard_i18n import LOCALES
 from scripts.report_data import collect_runs, is_number, is_scored
 
 
@@ -82,12 +77,18 @@ def dashboard_records(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "attention_adjusted_score": run.get("attention_adjusted_score")
                 if is_number(run.get("attention_adjusted_score"))
                 else None,
-                "duration_minutes": run.get("duration_minutes") if is_number(run.get("duration_minutes")) else None,
+                "duration_minutes": run.get("duration_minutes")
+                if is_number(run.get("duration_minutes"))
+                else None,
                 "human_interventions": run.get("human_interventions")
                 if is_number(run.get("human_interventions"))
                 else None,
-                "required_passed": tests.get("required_passed") if isinstance(tests.get("required_passed"), bool) else None,
-                "hidden_passed": tests.get("hidden_passed") if isinstance(tests.get("hidden_passed"), bool) else None,
+                "required_passed": tests.get("required_passed")
+                if isinstance(tests.get("required_passed"), bool)
+                else None,
+                "hidden_passed": tests.get("hidden_passed")
+                if isinstance(tests.get("hidden_passed"), bool)
+                else None,
                 "unrelated_files_changed": diff.get("unrelated_files_changed")
                 if is_number(diff.get("unrelated_files_changed"))
                 else None,
@@ -105,7 +106,9 @@ def fmt_number(value: Any, digits: int = 2) -> str:
 
 
 def fmt_rate(value: Any, labels: dict[str, Any]) -> str:
-    return f"{round(float(value) * 100)}%" if is_number(value) else str(labels["js"]["not_available"])
+    return (
+        f"{round(float(value) * 100)}%" if is_number(value) else str(labels["js"]["not_available"])
+    )
 
 
 def context_metrics_for_records(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -121,10 +124,18 @@ def context_cards(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
         (card_labels["hit_rate"], fmt_rate(metrics.get("hit_rate"), labels)),
         (card_labels["adoption_rate"], fmt_rate(metrics.get("adoption_rate"), labels)),
     ]
-    return '<div class="context-cards">' + "".join(
-        '<div class="context-card"><span>' + esc(label) + "</span><strong>" + esc(value) + "</strong></div>"
-        for label, value in cards
-    ) + "</div>"
+    return (
+        '<div class="context-cards">'
+        + "".join(
+            '<div class="context-card"><span>'
+            + esc(label)
+            + "</span><strong>"
+            + esc(value)
+            + "</strong></div>"
+            for label, value in cards
+        )
+        + "</div>"
+    )
 
 
 def context_type_rows(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
@@ -132,18 +143,16 @@ def context_type_rows(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
     for item in metrics.get("by_type", []):
         rows.append(
             "<tr>"
-            f'<td>{esc(item.get("context_type"))}</td>'
-            f'<td>{esc(fmt_rate(item.get("call_rate"), labels))}</td>'
-            f'<td>{esc(fmt_rate(item.get("hit_rate"), labels))}</td>'
-            f'<td>{esc(fmt_rate(item.get("adoption_rate"), labels))}</td>'
-            f'<td>{esc(item.get("runs_with_context_call", 0))}</td>'
-            f'<td>{esc(item.get("hit_mode"))}</td>'
+            f"<td>{esc(item.get('context_type'))}</td>"
+            f"<td>{esc(fmt_rate(item.get('call_rate'), labels))}</td>"
+            f"<td>{esc(fmt_rate(item.get('hit_rate'), labels))}</td>"
+            f"<td>{esc(fmt_rate(item.get('adoption_rate'), labels))}</td>"
+            f"<td>{esc(item.get('runs_with_context_call', 0))}</td>"
+            f"<td>{esc(item.get('hit_mode'))}</td>"
             "</tr>"
         )
     if not rows:
-        rows.append(
-            f'<tr><td colspan="6">{esc(labels["js"]["not_available"])}</td></tr>'
-        )
+        rows.append(f'<tr><td colspan="6">{esc(labels["js"]["not_available"])}</td></tr>')
     return "".join(rows)
 
 
@@ -160,27 +169,29 @@ def context_item_rows(metrics: dict[str, Any], labels: dict[str, Any]) -> str:
     for item in sorted_items[:20]:
         rows.append(
             "<tr>"
-            f'<td><code>{esc(item.get("context_id"))}</code></td>'
-            f'<td>{esc(item.get("context_type"))}</td>'
-            f'<td>{esc(fmt_rate(item.get("call_rate"), labels))}</td>'
-            f'<td>{esc(fmt_rate(item.get("hit_rate"), labels))}</td>'
-            f'<td>{esc(fmt_rate(item.get("adoption_rate"), labels))}</td>'
-            f'<td>{esc(item.get("runs_with_context_call", 0))}</td>'
-            f'<td>{esc(item.get("hit_mode"))}</td>'
+            f"<td><code>{esc(item.get('context_id'))}</code></td>"
+            f"<td>{esc(item.get('context_type'))}</td>"
+            f"<td>{esc(fmt_rate(item.get('call_rate'), labels))}</td>"
+            f"<td>{esc(fmt_rate(item.get('hit_rate'), labels))}</td>"
+            f"<td>{esc(fmt_rate(item.get('adoption_rate'), labels))}</td>"
+            f"<td>{esc(item.get('runs_with_context_call', 0))}</td>"
+            f"<td>{esc(item.get('hit_mode'))}</td>"
             "</tr>"
         )
     if not rows:
-        rows.append(
-            f'<tr><td colspan="7">{esc(labels["js"]["not_available"])}</td></tr>'
-        )
+        rows.append(f'<tr><td colspan="7">{esc(labels["js"]["not_available"])}</td></tr>')
     return "".join(rows)
 
 
 def context_metrics_section(records: list[dict[str, Any]], labels: dict[str, Any]) -> str:
     metrics = context_metrics_for_records(records)
     sections = labels["sections"]
-    type_headers = "".join(header_cell_html(header, labels) for header in labels["context_type_headers"])
-    item_headers = "".join(header_cell_html(header, labels) for header in labels["context_item_headers"])
+    type_headers = "".join(
+        header_cell_html(header, labels) for header in labels["context_type_headers"]
+    )
+    item_headers = "".join(
+        header_cell_html(header, labels) for header in labels["context_item_headers"]
+    )
     return (
         "<section>"
         f'<div class="section-head"><h2>{esc(sections["context_metrics"])}</h2></div>'
@@ -883,7 +894,7 @@ def header_cell_html(column: Any, labels: dict[str, Any]) -> str:
     help_text = column_help(column)
     if not help_text:
         return f'<th><span class="th-label">{esc(label)}</span></th>'
-    aria_label = f'{labels["js"]["calculation_help"]}: {label}'
+    aria_label = f"{labels['js']['calculation_help']}: {label}"
     return (
         '<th><span class="th-label">'
         f"{esc(label)}"
@@ -895,7 +906,9 @@ def header_cell_html(column: Any, labels: dict[str, Any]) -> str:
 
 
 def run_header_html(labels: dict[str, Any]) -> str:
-    return "\n              ".join(header_cell_html(header, labels) for header in labels["run_headers"])
+    return "\n              ".join(
+        header_cell_html(header, labels) for header in labels["run_headers"]
+    )
 
 
 def zh_output_path(output: Path) -> Path:
@@ -931,9 +944,18 @@ def dashboard_html(runs: list[dict[str, Any]], locale: str = "en") -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate a static HTML comparison dashboard.")
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="Runs root directory")
-    parser.add_argument("--tasks", type=Path, default=Path("benchmarks/tasks"), help="Benchmark tasks root directory")
-    parser.add_argument("--output", type=Path, default=Path("reports/dashboard.html"), help="Output HTML path")
-    parser.add_argument("--zh-output", type=Path, default=None, help="Chinese dashboard output path")
+    parser.add_argument(
+        "--tasks",
+        type=Path,
+        default=Path("benchmarks/tasks"),
+        help="Benchmark tasks root directory",
+    )
+    parser.add_argument(
+        "--output", type=Path, default=Path("reports/dashboard.html"), help="Output HTML path"
+    )
+    parser.add_argument(
+        "--zh-output", type=Path, default=None, help="Chinese dashboard output path"
+    )
     return parser.parse_args()
 
 

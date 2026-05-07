@@ -4,17 +4,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 INSTRUCTION_FILENAMES = {"agents.md", "claude.md", "readme.md", "readme.zh-cn.md"}
 RUN_EVAL_CASE_PATTERN = re.compile(r"(^|\s)(?:\./)?scripts/run_eval_case\.sh(\s|$)")
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def parse_timestamp(value: Any) -> datetime | None:
@@ -105,7 +104,9 @@ def project_instructions_read(events: list[dict[str, Any]]) -> bool:
     for event in events:
         if event.get("hook_event") == "InstructionsLoaded":
             return True
-        if "read_docs" in classifications(event) and any(is_instruction_path(path) for path in event_paths(event)):
+        if "read_docs" in classifications(event) and any(
+            is_instruction_path(path) for path in event_paths(event)
+        ):
             return True
     return False
 
@@ -160,14 +161,20 @@ def self_review_performed(events: list[dict[str, Any]]) -> bool:
 
 
 def is_test_run_event(event: dict[str, Any]) -> bool:
-    return "test_run" in classifications(event) or bool(RUN_EVAL_CASE_PATTERN.search(tool_summary(event)))
+    return "test_run" in classifications(event) or bool(
+        RUN_EVAL_CASE_PATTERN.search(tool_summary(event))
+    )
 
 
 def model_fields(events: list[dict[str, Any]]) -> tuple[str | None, list[str]]:
     models = unique([str(event.get("model")) for event in events if event.get("model")])
     if not models:
         return None, []
-    tool_models = [str(event.get("model")) for event in events if event.get("model") and "tool_use" in classifications(event)]
+    tool_models = [
+        str(event.get("model"))
+        for event in events
+        if event.get("model") and "tool_use" in classifications(event)
+    ]
     if not tool_models:
         return models[0], models
     counts = {model: tool_models.count(model) for model in unique(tool_models)}
@@ -219,7 +226,11 @@ def workflow_duration_minutes(events: list[dict[str, Any]]) -> float | None:
     if start is None:
         return None
 
-    end = terminal_timestamp(events, "SessionEnd") or terminal_timestamp(events, "Stop") or last_valid_timestamp(events)
+    end = (
+        terminal_timestamp(events, "SessionEnd")
+        or terminal_timestamp(events, "Stop")
+        or last_valid_timestamp(events)
+    )
     if end is None or end < start:
         return None
     return round((end - start).total_seconds() / 60, 3)
@@ -260,7 +271,9 @@ def summarize_run_events(run_path: Path, *, write: bool = False) -> dict[str, An
 
     process = dict(run.get("process_evidence", {}))
     process["project_instructions_read"] = project_instructions_read(events)
-    process["relevant_docs_read"] = unique(process.get("relevant_docs_read", []) + relevant_docs_read(events))
+    process["relevant_docs_read"] = unique(
+        process.get("relevant_docs_read", []) + relevant_docs_read(events)
+    )
     process["knowledge_sources_used"] = unique(
         process.get("knowledge_sources_used", []) + knowledge_sources_used(events)
     )
@@ -282,9 +295,13 @@ def summarize_run_events(run_path: Path, *, write: bool = False) -> dict[str, An
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Summarize hook events into run.json process evidence.")
+    parser = argparse.ArgumentParser(
+        description="Summarize hook events into run.json process evidence."
+    )
     parser.add_argument("--run", required=True, type=Path, help="Path to run.json")
-    parser.add_argument("--write", action="store_true", help="Write derived fields back to run.json")
+    parser.add_argument(
+        "--write", action="store_true", help="Write derived fields back to run.json"
+    )
     return parser.parse_args()
 
 

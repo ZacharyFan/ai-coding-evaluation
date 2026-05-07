@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 LOCALES: dict[str, dict[str, Any]] = {
     "en": {
         "html_lang": "en",
@@ -81,9 +80,18 @@ LOCALES: dict[str, dict[str, Any]] = {
         },
         "comparison_headers": [
             {"label": "Group"},
-            {"label": "Runs", "help": "Number of runs in this group after the current filters are applied."},
-            {"label": "Scored", "help": "Number of runs with a completed score.json. Draft or missing scores are excluded."},
-            {"label": "Avg Final", "help": "Average of score.json.score across scored runs. This is the final score after hard gates."},
+            {
+                "label": "Runs",
+                "help": "Number of runs in this group after the current filters are applied.",
+            },
+            {
+                "label": "Scored",
+                "help": "Number of runs with a completed score.json. Draft or missing scores are excluded.",
+            },
+            {
+                "label": "Avg Final",
+                "help": "Average of score.json.score across scored runs. This is the final score after hard gates.",
+            },
             {
                 "label": "Avg Attention",
                 "help": "Average of attention_adjusted_score across scored runs. attention_adjusted_score = score / max(1, human_interventions).",
@@ -125,7 +133,10 @@ LOCALES: dict[str, dict[str, Any]] = {
             {"label": "Required"},
             {"label": "Hidden"},
             {"label": "Unrelated"},
-            {"label": "Gates", "help": "Manual and derived hard gates merged into score.json.hard_gates."},
+            {
+                "label": "Gates",
+                "help": "Manual and derived hard gates merged into score.json.hard_gates.",
+            },
             {"label": "Evidence"},
         ],
         "heatmap_workflow_header_help": "Each cell aggregates scored runs for the task and workflow after filters. It shows average final score, average attention-adjusted score, run count, and gated run count.",
@@ -221,8 +232,14 @@ LOCALES: dict[str, dict[str, Any]] = {
         "comparison_headers": [
             {"label": "分组"},
             {"label": "运行数", "help": "当前筛选条件下，该分组包含的 run 数量。"},
-            {"label": "已评分", "help": "已生成完整 score.json 的 run 数量。草稿或缺失 score 的 run 不计入。"},
-            {"label": "平均最终分", "help": "已评分 run 的 score.json.score 平均值。该分数是经过 hard gate 封顶后的最终分。"},
+            {
+                "label": "已评分",
+                "help": "已生成完整 score.json 的 run 数量。草稿或缺失 score 的 run 不计入。",
+            },
+            {
+                "label": "平均最终分",
+                "help": "已评分 run 的 score.json.score 平均值。该分数是经过 hard gate 封顶后的最终分。",
+            },
             {
                 "label": "平均注意力分",
                 "help": "已评分 run 的 attention_adjusted_score 平均值。attention_adjusted_score = score / max(1, human_interventions)。",
@@ -251,7 +268,10 @@ LOCALES: dict[str, dict[str, Any]] = {
             {"label": "业务复杂度"},
             {"label": "上下文成熟度"},
             {"label": "最终分", "help": "最终分 = 原始分经过 hard gate 封顶后的结果。"},
-            {"label": "原始分", "help": "原始分 = 各 review 维度按 task.json.scoring_weights 加权后的分数，尚未应用 hard gate。"},
+            {
+                "label": "原始分",
+                "help": "原始分 = 各 review 维度按 task.json.scoring_weights 加权后的分数，尚未应用 hard gate。",
+            },
             {
                 "label": "注意力分",
                 "help": "attention_adjusted_score = score / max(1, human_interventions)。",
@@ -264,7 +284,10 @@ LOCALES: dict[str, dict[str, Any]] = {
             {"label": "必跑测试"},
             {"label": "隐藏测试"},
             {"label": "无关变更"},
-            {"label": "Gates", "help": "score.json.hard_gates 中合并后的人工 hard gate 和自动派生 hard gate。"},
+            {
+                "label": "Gates",
+                "help": "score.json.hard_gates 中合并后的人工 hard gate 和自动派生 hard gate。",
+            },
             {"label": "证据"},
         ],
         "heatmap_workflow_header_help": "每个单元格聚合当前筛选条件下同一任务、同一工作流的已评分 run，展示平均最终分、平均注意力分、运行次数和触发 gate 的次数。",

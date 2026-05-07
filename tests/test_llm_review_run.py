@@ -67,7 +67,9 @@ def write_run_files(tmp_path: Path, run: dict | None = None) -> tuple[Path, Path
     run_path = run_dir / "run.json"
     write_json(task_path, base_task())
     (task_dir / "task.md").write_text("# Task\nFix the behavior.\n", encoding="utf-8")
-    (task_dir / "acceptance.md").write_text("# Acceptance\nThe final diff is correct.\n", encoding="utf-8")
+    (task_dir / "acceptance.md").write_text(
+        "# Acceptance\nThe final diff is correct.\n", encoding="utf-8"
+    )
     write_json(run_path, run or base_run())
     (run_dir / "test.log").write_text("$ test\nexit_code=0\n", encoding="utf-8")
     (run_dir / "diff.patch").write_text("diff --git a/value.txt b/value.txt\n", encoding="utf-8")
@@ -94,7 +96,9 @@ def llm_response(review: dict | None = None) -> str:
     )
 
 
-def test_llm_review_run_uses_llm_json_and_writes_score_without_mutating_run_json(tmp_path, monkeypatch):
+def test_llm_review_run_uses_llm_json_and_writes_score_without_mutating_run_json(
+    tmp_path, monkeypatch
+):
     task_path, run_path, score_path = write_run_files(tmp_path)
 
     monkeypatch.setattr(llm_review_module, "send_chat_completion", lambda **kwargs: llm_response())
@@ -167,7 +171,9 @@ def test_llm_review_run_rejects_out_of_range_llm_scores(tmp_path, monkeypatch):
         "security": 1.0,
         "process_compliance": 1.0,
     }
-    monkeypatch.setattr(llm_review_module, "send_chat_completion", lambda **kwargs: llm_response(bad_review))
+    monkeypatch.setattr(
+        llm_review_module, "send_chat_completion", lambda **kwargs: llm_response(bad_review)
+    )
 
     with pytest.raises(ValueError, match="review.correctness must be between 0 and 1"):
         llm_review_run(
@@ -185,7 +191,9 @@ def test_llm_review_run_rejects_out_of_range_llm_scores(tmp_path, monkeypatch):
 
 def test_review_prompt_includes_acceptance_and_redacts_secrets(tmp_path):
     task_path, run_path, _ = write_run_files(tmp_path)
-    (run_path.parent / "test.log").write_text("Authorization: Bearer secret-token\n", encoding="utf-8")
+    (run_path.parent / "test.log").write_text(
+        "Authorization: Bearer secret-token\n", encoding="utf-8"
+    )
 
     prompt = build_review_prompt(task_path, run_path, max_input_chars=10_000)
 

@@ -46,7 +46,9 @@ def write_task(root: Path, repo: Path, base_ref: str) -> None:
     (task_dir / "task.md").write_text("# Task\nUse the target worktree.\n", encoding="utf-8")
     (task_dir / "task.zh-CN.md").write_text("# 任务\n使用 target worktree。\n", encoding="utf-8")
     (task_dir / "acceptance.md").write_text("# Acceptance\nReviewer-only.\n", encoding="utf-8")
-    (task_dir / "acceptance.zh-CN.md").write_text("# 验收\n仅供 reviewer 使用。\n", encoding="utf-8")
+    (task_dir / "acceptance.zh-CN.md").write_text(
+        "# 验收\n仅供 reviewer 使用。\n", encoding="utf-8"
+    )
     write_json(
         task_dir / "task.json",
         {
@@ -95,7 +97,9 @@ def test_prepare_run_clones_target_and_writes_run_json(tmp_path):
     }
     assert "context_metrics" not in run
     assert (run_dir / "task.md").read_text(encoding="utf-8") == "# Task\nUse the target worktree.\n"
-    assert (run_dir / "task.zh-CN.md").read_text(encoding="utf-8") == "# 任务\n使用 target worktree。\n"
+    assert (run_dir / "task.zh-CN.md").read_text(
+        encoding="utf-8"
+    ) == "# 任务\n使用 target worktree。\n"
     assert not (run_dir / "coding-prompt.md").exists()
     assert not (run_dir / "acceptance.md").exists()
     assert not (run_dir / "acceptance.zh-CN.md").exists()

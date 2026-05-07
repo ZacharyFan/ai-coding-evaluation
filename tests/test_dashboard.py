@@ -26,7 +26,9 @@ def write_task(root: Path, task_id: str = "task") -> None:
     )
 
 
-def write_run(root: Path, workflow: str, task_id: str, run_id: str, run: dict, score: dict | None = None) -> None:
+def write_run(
+    root: Path, workflow: str, task_id: str, run_id: str, run: dict, score: dict | None = None
+) -> None:
     run_dir = root / "runs" / workflow / task_id / run_id
     adoption_defaults = {
         "candidate_ref": None,
@@ -253,8 +255,16 @@ def test_dashboard_html_includes_context_link_metrics(tmp_path):
         {"adoption": {"ai_generated_lines": 10, "accepted_lines": 3, "adoption_rate": None}},
         {"score": 80, "raw_score": 80, "attention_adjusted_score": 80, "hard_gates": []},
     )
-    append_event(tmp_path, "baseline", "task", "hit", context_event("knowledge", "docs/contexts/catalog.md"))
-    append_event(tmp_path, "baseline", "task", "miss", context_event("knowledge", "docs/contexts/catalog.md", empty=True))
+    append_event(
+        tmp_path, "baseline", "task", "hit", context_event("knowledge", "docs/contexts/catalog.md")
+    )
+    append_event(
+        tmp_path,
+        "baseline",
+        "task",
+        "miss",
+        context_event("knowledge", "docs/contexts/catalog.md", empty=True),
+    )
     runs = collect_runs(tmp_path / "runs", tmp_path / "benchmarks" / "tasks")
 
     html = dashboard_html(runs)

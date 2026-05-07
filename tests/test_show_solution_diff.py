@@ -166,7 +166,7 @@ def test_show_solution_diff_fails_without_prepared_worktree(tmp_path):
     del run["target"]["worktree"]
     write_json(run_path, run)
 
-    with pytest.raises(ValueError, match="Run scripts/prepare_run.py first"):
+    with pytest.raises(ValueError, match="Run `python -m scripts.prepare_run` first"):
         show_solution_diff(task_path, run_path)
 
 
@@ -189,7 +189,8 @@ def test_show_solution_diff_cli_reports_clean_error_without_traceback(tmp_path):
     result = subprocess.run(
         [
             sys.executable,
-            str(repo_root / "scripts" / "show_solution_diff.py"),
+            "-m",
+            "scripts.show_solution_diff",
             "--task",
             str(task_path),
             "--run",

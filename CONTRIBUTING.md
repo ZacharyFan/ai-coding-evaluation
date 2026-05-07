@@ -17,8 +17,10 @@ This project needs repeatable engineering tasks, not prompts that merely sound r
 4. Validate locally:
 
    ```bash
-   python scripts/validate_task.py benchmarks/tasks/<task-id>
-   pytest
+   python -m scripts.validate_task benchmarks/tasks/<task-id>
+   ruff check scripts tests
+   ruff format --check scripts tests
+   python -m pytest
    ```
 
 ## Task Directory Contract
@@ -95,8 +97,10 @@ A good public task has:
 
 Before opening a PR:
 
-- `python scripts/validate_task.py benchmarks/tasks/<task-id>` passes
-- `pytest` passes
+- `python -m scripts.validate_task benchmarks/tasks/<task-id>` passes
+- `ruff check scripts tests` passes
+- `ruff format --check scripts tests` passes
+- `python -m pytest` passes
 - `tests.sh` is executable
 - The task can be run from a clean checkout of the public target repo
 - `scoring_weights` still sums to 100

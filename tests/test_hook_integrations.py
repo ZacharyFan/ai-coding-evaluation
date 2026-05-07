@@ -21,7 +21,9 @@ def test_codex_hook_templates_are_valid_json_and_reference_adapter():
 
 
 def test_claude_hook_template_is_valid_json_and_references_adapter():
-    settings = json.loads(Path("integrations/claude-code/settings.example.json").read_text(encoding="utf-8"))
+    settings = json.loads(
+        Path("integrations/claude-code/settings.example.json").read_text(encoding="utf-8")
+    )
 
     assert "InstructionsLoaded" in settings["hooks"]
     assert "PostToolUseFailure" in settings["hooks"]

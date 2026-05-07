@@ -2,7 +2,7 @@
 
 [英文版](hooks.md)
 
-Hook 是可选的过程证据层，用来记录 coding 过程中发生了什么。它不负责评分，也不替代 `collect_run.py`。
+Hook 是可选的过程证据层，用来记录 coding 过程中发生了什么。它不负责评分，也不替代 `python -m scripts.collect_run`。
 
 整体形态刻意保持简单：
 
@@ -15,26 +15,22 @@ Claude/Codex hook input -> record_hook_event.py -> events.jsonl -> summarize_run
 先准备一次 run：
 
 ```bash
-python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
+python -m scripts.eval start --workflow <workflow> --task <task-id> [--model <model>]
 ```
 
 启动 coding agent 前，先导出当前 run 环境：
 
 ```bash
-eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
+eval "$(python -m scripts.eval env)"
 ```
 
-如果你已经在 evaluation 仓库中，短写法等价：
+如果你不在 evaluation 仓库根目录，改用这个薄 wrapper：
 
 ```bash
-eval "$(python scripts/eval.py env)"
+eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
 ```
 
-`eval.py env` 会输出绝对路径，所以导出的环境变量在 `cd` 到 target worktree 后仍然有效。也可以在 evaluation 仓库外执行：
-
-```bash
-python /absolute/path/to/ai-coding-evaluation/scripts/eval.py --repo /absolute/path/to/ai-coding-evaluation env
-```
+`scripts.eval env` 会输出绝对路径，所以导出的环境变量在 `cd` 到 target worktree 后仍然有效。
 
 然后从同一个 shell 启动 Claude Code 或 Codex：
 
@@ -55,7 +51,7 @@ Codex hooks 需要开启 feature flag：
 codex_hooks = true
 ```
 
-可以把 `integrations/codex/config.example.toml` 和 `integrations/codex/hooks.example.json` 作为 Codex 配置模板。hook command 会使用 `$AI_EVAL_REPO`，所以启动 Codex 前必须先执行 `eval "$(python .../scripts/eval.py env)"`。
+可以把 `integrations/codex/config.example.toml` 和 `integrations/codex/hooks.example.json` 作为 Codex 配置模板。hook command 会使用 `$AI_EVAL_REPO`，所以启动 Codex 前必须先执行 `eval "$(python -m scripts.eval env)"`；如果不在仓库根目录，就用 `bin/ai-eval env`。
 
 模板会记录：
 
@@ -132,12 +128,12 @@ benchmark 任务优先配置 `task.json.context_sources`。无法安全分类时
 运行：
 
 ```bash
-python scripts/summarize_run_events.py \
+python -m scripts.summarize_run_events \
   --run runs/<workflow>/<task-id>/<run-id>/run.json \
   --write
 ```
 
-`collect_run.py --write` 发现 `events.jsonl` 时也会自动汇总一次。
+`python -m scripts.collect_run --write` 发现 `events.jsonl` 时也会自动汇总一次。
 
 会自动派生：
 
@@ -160,7 +156,7 @@ event_collection
 跨 run 链路指标由独立脚本计算：
 
 ```bash
-python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
+python -m scripts.context_metrics --runs runs --output reports/context-metrics.json
 ```
 
 该脚本只统计有非空 `events.jsonl` 的 run，并计算调用率、命中率和采纳率。

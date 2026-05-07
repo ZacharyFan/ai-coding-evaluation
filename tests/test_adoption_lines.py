@@ -131,7 +131,9 @@ def test_adoption_lines_respects_task_scope_allowlist(tmp_path):
     repo, base_ref = init_repo(tmp_path)
     root = tmp_path / "evaluation"
     task_dir = root / "benchmarks" / "tasks" / "example-task"
-    write_json(task_dir / "task.json", {"id": "example-task", "scope": {"allowed_paths": ["value.txt"]}})
+    write_json(
+        task_dir / "task.json", {"id": "example-task", "scope": {"allowed_paths": ["value.txt"]}}
+    )
     (repo / "value.txt").write_text("base\nkept\n", encoding="utf-8")
     (repo / "notes.md").write_text("scope out\n", encoding="utf-8")
     candidate_ref = commit_all(repo, "test: candidate")
