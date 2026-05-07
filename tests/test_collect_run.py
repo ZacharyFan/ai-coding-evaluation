@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.execute_run import execute_run, load_json
+from scripts.collect_run import collect_run, load_json
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -123,13 +123,13 @@ def write_remote_task_and_run_without_worktree(tmp_path: Path, base_ref: str) ->
     return task_path, run_path
 
 
-def test_execute_run_collects_passing_test_log_diff_and_run_facts(tmp_path):
+def test_collect_run_collects_passing_test_log_diff_and_run_facts(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
     task_path, run_path = write_task_and_run(tmp_path, repo, base_ref, command)
 
-    result = execute_run(task_path, run_path, write=True)
+    result = collect_run(task_path, run_path, write=True)
 
     run_dir = run_path.parent
     run = load_json(run_path)
@@ -146,7 +146,7 @@ def test_execute_run_collects_passing_test_log_diff_and_run_facts(tmp_path):
     assert "$ " in (run_dir / "test.log").read_text(encoding="utf-8")
 
 
-def test_execute_run_does_not_overwrite_existing_workflow_duration(tmp_path):
+def test_collect_run_does_not_overwrite_existing_workflow_duration(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
@@ -155,13 +155,13 @@ def test_execute_run_does_not_overwrite_existing_workflow_duration(tmp_path):
     run["duration_minutes"] = 4.25
     write_json(run_path, run)
 
-    result = execute_run(task_path, run_path, write=True)
+    result = collect_run(task_path, run_path, write=True)
 
     assert result["duration_minutes"] == 4.25
     assert load_json(run_path)["duration_minutes"] == 4.25
 
 
-def test_execute_run_summarizes_hook_events_when_present(tmp_path):
+def test_collect_run_summarizes_hook_events_when_present(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
@@ -230,7 +230,7 @@ def test_execute_run_summarizes_hook_events_when_present(tmp_path):
         },
     )
 
-    execute_run(task_path, run_path, write=True)
+    collect_run(task_path, run_path, write=True)
 
     run = load_json(run_path)
     assert run["model"] == "gpt-5.5"
@@ -239,7 +239,7 @@ def test_execute_run_summarizes_hook_events_when_present(tmp_path):
     assert run["event_collection"]["event_count"] == 3
 
 
-def test_execute_run_uses_prepared_worktree_from_run_json(tmp_path):
+def test_collect_run_uses_prepared_worktree_from_run_json(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     command = f"{sys.executable} -c \"from pathlib import Path; assert Path('value.txt').read_text() == 'green\\\\n'\""
@@ -255,13 +255,13 @@ def test_execute_run_uses_prepared_worktree_from_run_json(tmp_path):
     }
     write_json(run_path, run)
 
-    result = execute_run(task_path, run_path, write=True)
+    result = collect_run(task_path, run_path, write=True)
 
     assert result["tests"]["required_passed"] is True
     assert load_json(run_path)["diff"]["files_changed"] == 1
 
 
-def test_execute_run_applies_scope_allowlist(tmp_path):
+def test_collect_run_applies_scope_allowlist(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "value.txt").write_text("green\n", encoding="utf-8")
     (repo / "notes.md").write_text("unrelated\n", encoding="utf-8")
@@ -274,7 +274,7 @@ def test_execute_run_applies_scope_allowlist(tmp_path):
         scope={"allowed_paths": ["value.txt"]},
     )
 
-    result = execute_run(task_path, run_path, write=True)
+    result = collect_run(task_path, run_path, write=True)
 
     run = load_json(run_path)
     assert result["diff"]["files_changed"] == 2
@@ -284,7 +284,7 @@ def test_execute_run_applies_scope_allowlist(tmp_path):
     assert "notes.md" in (run_path.parent / "diff.patch").read_text(encoding="utf-8")
 
 
-def test_execute_run_scope_allowlist_supports_globs(tmp_path):
+def test_collect_run_scope_allowlist_supports_globs(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     (repo / "cart").mkdir()
     (repo / "cart" / "cart.go").write_text("package cart\n", encoding="utf-8")
@@ -297,7 +297,7 @@ def test_execute_run_scope_allowlist_supports_globs(tmp_path):
         scope={"allowed_paths": ["cart/**"]},
     )
 
-    execute_run(task_path, run_path, write=True)
+    collect_run(task_path, run_path, write=True)
 
     run = load_json(run_path)
     assert run["diff"]["scope_check"] == "path_allowlist"
@@ -305,20 +305,20 @@ def test_execute_run_scope_allowlist_supports_globs(tmp_path):
     assert run["diff"]["unrelated_files"] == []
 
 
-def test_execute_run_requires_prepare_run_for_remote_target_without_worktree(tmp_path):
+def test_collect_run_requires_prepare_run_for_remote_target_without_worktree(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     task_path, run_path = write_remote_task_and_run_without_worktree(tmp_path, base_ref)
 
     with pytest.raises(RuntimeError, match="run scripts/prepare_run.py first"):
-        execute_run(task_path, run_path)
+        collect_run(task_path, run_path)
 
 
-def test_execute_run_records_failing_test_output(tmp_path):
+def test_collect_run_records_failing_test_output(tmp_path):
     repo, base_ref = init_target_repo(tmp_path)
     command = f"{sys.executable} -c \"raise SystemExit('intentional failure')\""
     task_path, run_path = write_task_and_run(tmp_path, repo, base_ref, command)
 
-    result = execute_run(task_path, run_path, write=True)
+    result = collect_run(task_path, run_path, write=True)
 
     run = load_json(run_path)
     assert result["tests"]["required_passed"] is False
@@ -333,4 +333,4 @@ def test_reset_to_base_requires_clean_target_repo(tmp_path):
     task_path, run_path = write_task_and_run(tmp_path, repo, base_ref, command)
 
     with pytest.raises(RuntimeError, match="target repo must be clean"):
-        execute_run(task_path, run_path, write=False, reset_to_base=True)
+        collect_run(task_path, run_path, write=False, reset_to_base=True)

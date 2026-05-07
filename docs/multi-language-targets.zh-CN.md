@@ -25,7 +25,7 @@
 
 `base_ref` 很关键。没有固定起始版本，两个工作流的运行结果就不是真正可比较的。`benchmarks/tasks/` 下的公开 benchmark 任务必须使用可 clone 的 Git URL 和完整 commit SHA。本地文件路径只用于 `benchmarks/local/` 实验任务和模板。
 
-`solution_ref` 是可选信息字段。它可以指向给 reviewer 参考的参考实现 commit，但不是唯一有效解，也不会被 `prepare_run.py`、`execute_run.py`、`score_run.py` 或报告使用。
+`solution_ref` 是可选信息字段。它可以指向给 reviewer 参考的参考实现 commit，但不是唯一有效解，也不会被 `prepare_run.py`、`collect_run.py`、`score_run.py` 或报告使用。
 
 ## 示例
 
@@ -95,6 +95,6 @@ Rust：
 
 ## 当前边界
 
-`prepare_run.py` 会把目标仓库 clone 到隔离的 run worktree，并 checkout 到 `target.base_ref`。`execute_run.py` 随后在这个准备好的 worktree 内执行 setup/test 命令，并记录 `test.log`、`diff.patch` 和机械 run 事实。
+`prepare_run.py` 会把目标仓库 clone 到隔离的 run worktree，并 checkout 到 `target.base_ref`。`collect_run.py` 随后在这个准备好的 worktree 内执行 setup/test 命令，并记录 `test.log`、`diff.patch` 和机械 run 事实。
 
 请把精确命令写入 `target.test_commands`。如果任务需要单一可执行入口，也把同样的命令同步到 `tests.sh`。

@@ -41,7 +41,7 @@ prepare_run 创建隔离 target worktree
         ->
 AI/人工 coding 修改 runs/.../target
         ->
-execute_run 采集测试、diff 和 scope 事实
+collect_run 采集测试、diff 和 scope 事实
         ->
 人工 review 或 llm_review_run 写入 score.json
         ->
@@ -57,26 +57,45 @@ dashboard = 只读的对比投影
 
 ## 快速开始
 
-先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后准备隔离 target worktree：
+先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后用快捷 CLI 走最短评分闭环。
+
+1. 准备一次 run：
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id> --model <model>
+python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
 ```
 
-AI 或人工 workflow 修改准备好的 `runs/.../target` worktree。Coding prompt 使用 `runs/<workflow>/<task-id>/<run-id>/task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
+<details>
+<summary><strong>可选：</strong>采集 hook 过程证据</summary>
 
-如果要用 Claude Code 或 Codex hook 自动采集过程证据，先导出 `prepare_run.py` 打印的 `AI_EVAL_*` 变量，再从 `runs/.../target` 启动 agent。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
-
-coding 完成后，采集测试和 diff 证据：
+启动 Claude Code 或 Codex 前，先导出当前 run 环境：
 
 ```bash
-python scripts/execute_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --write
+eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
 ```
 
-可选采纳证据：如果要计算行级采纳率，让 AI workflow 或 reviewer 先把 candidate 结果提交成 commit，再把这个 candidate commit 与最终采纳 commit 对比。这个指标只用于链路诊断，不影响 `score.json`。
+agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你已经在 evaluation 仓库中，`eval "$(python scripts/eval.py env)"` 等价。Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+
+</details>
+
+然后进入 target worktree：
+
+```bash
+cd "$AI_EVAL_TARGET_WORKTREE"
+```
+
+AI 或人工 workflow 修改准备好的 target worktree。Coding prompt 使用复制到 run 目录下的 `task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
+
+2. coding 完成后，采集测试和 diff 证据：
+
+```bash
+python scripts/eval.py collect
+```
+
+<details>
+<summary><strong>可选：</strong>计算采纳率指标</summary>
+
+如果要计算行级采纳率，让 AI workflow 或 reviewer 先把 candidate 结果提交成 commit，再把这个 candidate commit 与最终采纳 commit 对比。这个指标只用于链路诊断，不影响 `score.json`。
 
 ```bash
 cd runs/<workflow>/<task-id>/<run-id>/target
@@ -88,69 +107,66 @@ git rev-parse HEAD
 最终采纳版本也形成 commit 后：
 
 ```bash
-python scripts/adoption_lines.py \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
+python scripts/eval.py adoption \
   --candidate-ref <candidate-sha> \
-  --accepted-ref <accepted-sha> \
-  --write
+  --accepted-ref <accepted-sha>
 ```
 
 `candidate_ref` 是 AI candidate commit。`accepted_ref` 是最终采纳 commit。`target.solution_ref` 仍然只是参考解，不作为默认采纳来源。
 
-可选 review 辅助：如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff。这个 helper 会在存在 `task.scope.allowed_paths` 时只展示任务允许范围内的差异，输出带文件标题和行号的 reviewer-friendly diff view，并用红色背景标记候选侧行、绿色背景标记参考侧行。它只给 reviewer 提供上下文，不能按“和参考解相似度”打分。
+</details>
+
+<details>
+<summary><strong>可选：</strong>查看参考解 diff</summary>
+
+如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff。这个 helper 会在存在 `task.scope.allowed_paths` 时只展示任务允许范围内的差异，输出带文件标题和行号的 reviewer-friendly diff view，并用红色背景标记候选侧行、绿色背景标记参考侧行。
 
 ```bash
-python scripts/show_solution_diff.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --color auto
+python scripts/eval.py solution-diff --color auto
 ```
 
-正式计算分数前，先二选一完成 review。
+它只给 reviewer 提供上下文，不能按“和参考解相似度”打分。
 
-人工路径：直接传入六个 review 分数。这会创建或更新 `score.json`，并一次性计算最终分。每个 review 值必须在 `0.0` 到 `1.0` 之间。除非 reviewer 明确要压分，否则不要传 `--manual-hard-gate`：
+</details>
+
+3. 正式计算分数前，先选择一种 review 路径。
+
+人工路径，首次运行推荐使用：直接传入六个 review 分数。这会创建或更新 `score.json`，并一次性计算最终分。每个 review 值必须在 `0.0` 到 `1.0` 之间。除非 reviewer 明确要压分，否则不要传 `--manual-hard-gate`：
 
 ```bash
-python scripts/score_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --score runs/<workflow>/<task-id>/<run-id>/score.json \
+python scripts/eval.py score \
   --set-review \
     correctness=1.0 \
     regression_safety=1.0 \
     maintainability=0.8 \
     test_quality=0.8 \
     security=1.0 \
-    process_compliance=0.6 \
-  --write
+    process_compliance=0.6
 ```
 
-如果需要人工 hard gate，追加 `--manual-hard-gate public_api_break`。`score_run.py --init` 仍然保留给偏好手动编辑 draft JSON 的 reviewer。
+如果需要人工 hard gate，追加 `--manual-hard-gate public_api_break`。`python scripts/eval.py score --init` 仍然保留给偏好手动编辑 draft JSON 的 reviewer。
 
-LLM 路径：用 OpenAI-compatible reviewer 自动生成 `score.json` 并一次性计算最终分：
+LLM review 路径：用 OpenAI-compatible reviewer 自动生成 `score.json` 并一次性计算最终分：
 
 ```bash
 AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
-python scripts/llm_review_run.py \
-  --task benchmarks/tasks/<task-id>/task.json \
-  --run runs/<workflow>/<task-id>/<run-id>/run.json \
-  --write
+python scripts/eval.py llm-review
 ```
 
 如果使用 DeepSeek-compatible review，把 `AI_EVAL_REVIEW_BASE_URL` 设为 `https://api.deepseek.com`，并传入 `--api-key-env DEEPSEEK_API_KEY`。
 
-生成终端汇总报告：
+4. 生成报告或看板：
 
 ```bash
-python scripts/report.py --runs runs
+python scripts/eval.py report
+python scripts/eval.py dashboard
 ```
 
-生成静态对比看板：
+`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
 
-```bash
-python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
-```
+<details>
+<summary><strong>可选：</strong>生成链路指标</summary>
 
 从 hook 证据生成跨 run 链路指标：
 
@@ -158,7 +174,24 @@ python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output report
 python scripts/context_metrics.py --runs runs --output reports/context-metrics.json
 ```
 
-`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。链路指标依赖 hook events；没有非空 `events.jsonl` 的 run 不计入分母。
+这是跨 run 诊断视图，不参与评分。链路指标依赖 hook events；没有非空 `events.jsonl` 的 run 不计入分母。
+
+</details>
+
+`scripts/eval.py` 不引入新的评估协议。它只是把最近一次 run 记在 `runs/.current.json`，并自动解析 `task.json`、`run.json` 和 `score.json` 路径。并行跑多个实验时，对 `collect`、`score`、`llm-review`、`solution-diff` 或 `adoption` 传入 `--run-dir runs/<workflow>/<task-id>/<run-id>` 即可。
+
+## 底层命令
+
+快捷 CLI 只是稳定原语上的薄封装。调试、CI 或不想使用 `runs/.current.json` 时，可以直接运行底层命令：
+
+```bash
+python scripts/prepare_run.py --workflow <workflow> --task <task-id> [--model <model>]
+python scripts/collect_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
+python scripts/score_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --score runs/<workflow>/<task-id>/<run-id>/score.json --set-review correctness=1.0 regression_safety=1.0 maintainability=0.8 test_quality=0.8 security=1.0 process_compliance=0.6 --write
+python scripts/llm_review_run.py --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
+python scripts/report.py --runs runs
+python scripts/dashboard.py --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+```
 
 完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
 

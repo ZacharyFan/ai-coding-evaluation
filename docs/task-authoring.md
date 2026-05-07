@@ -38,7 +38,7 @@ Use `scope.allowed_paths` to define where the final diff is allowed to change fi
 }
 ```
 
-If `scope` is omitted, `execute_run.py` records `scope_check=not_configured` and leaves unrelated-file status unknown. If a changed file does not match the allowlist, `score_run.py` derives the `unrelated_changes` hard gate.
+If `scope` is omitted, `collect_run.py` records `scope_check=not_configured` and leaves unrelated-file status unknown. If a changed file does not match the allowlist, `score_run.py` derives the `unrelated_changes` hard gate.
 
 Use optional `context_sources` when the target repo has known docs, knowledge files, component docs, specs, skills, or MCP tools. Hook events use these mappings before heuristics, which makes link metrics more trustworthy:
 

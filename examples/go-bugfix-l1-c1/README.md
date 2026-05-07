@@ -44,7 +44,7 @@ In this example, `baseline` is just the workflow group label used for run paths 
 
 ```bash
 python scripts/prepare_run.py --workflow baseline --task go-bugfix-l1-c1 --run-id demo-002
-python scripts/execute_run.py \
+python scripts/collect_run.py \
   --task benchmarks/tasks/go-bugfix-l1-c1/task.json \
   --run runs/baseline/go-bugfix-l1-c1/demo-002/run.json \
   --write

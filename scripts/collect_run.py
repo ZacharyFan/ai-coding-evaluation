@@ -51,7 +51,7 @@ def resolve_prepared_worktree(worktree: str) -> Path:
     return path
 
 
-def resolve_execution_repo(task_target: dict[str, Any], run: dict[str, Any]) -> Path:
+def resolve_collection_repo(task_target: dict[str, Any], run: dict[str, Any]) -> Path:
     run_target = run.get("target", {})
     worktree = run_target.get("worktree")
     if worktree:
@@ -183,7 +183,7 @@ def scope_check_result(task: dict[str, Any], changed: list[str]) -> dict[str, An
     }
 
 
-def execute_run(
+def collect_run(
     task_path: Path,
     run_path: Path,
     *,
@@ -194,7 +194,7 @@ def execute_run(
     task = load_json(task_path)
     run = load_json(run_path)
     target = task["target"]
-    target_repo = resolve_execution_repo(target, run)
+    target_repo = resolve_collection_repo(target, run)
     working_directory = target_repo / target.get("working_directory", ".")
     base_ref = target["base_ref"]
     run_dir = run_path.parent
@@ -237,7 +237,7 @@ def execute_run(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Execute target checks and collect run evidence.")
+    parser = argparse.ArgumentParser(description="Collect target checks and run evidence.")
     parser.add_argument("--task", required=True, type=Path, help="Path to task.json")
     parser.add_argument("--run", required=True, type=Path, help="Path to run.json")
     parser.add_argument("--write", action="store_true", help="Write test.log, diff.patch, and run.json")
@@ -248,7 +248,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    result = execute_run(
+    result = collect_run(
         args.task,
         args.run,
         write=args.write,

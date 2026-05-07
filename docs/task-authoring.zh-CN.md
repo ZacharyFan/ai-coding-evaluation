@@ -38,7 +38,7 @@
 }
 ```
 
-如果省略 `scope`，`execute_run.py` 会记录 `scope_check=not_configured`，并把无关文件状态留为未知。如果某个 changed file 不匹配 allowlist，`score_run.py` 会派生 `unrelated_changes` hard gate。
+如果省略 `scope`，`collect_run.py` 会记录 `scope_check=not_configured`，并把无关文件状态留为未知。如果某个 changed file 不匹配 allowlist，`score_run.py` 会派生 `unrelated_changes` hard gate。
 
 如果目标仓库有明确的文档、知识文件、组件文档、SPEC、Skills 或 MCP 工具，可以配置可选 `context_sources`。Hook 事件会优先使用这些映射，再退回 heuristic，因此链路指标更可信：
 

@@ -2,7 +2,7 @@
 
 [Chinese version](hooks.zh-CN.md)
 
-Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `execute_run.py`.
+Hooks are an optional evidence layer for capturing what happened during coding. They do not score a run and they do not replace `collect_run.py`.
 
 The shape is intentionally simple:
 
@@ -15,25 +15,36 @@ Claude/Codex hook input -> record_hook_event.py -> events.jsonl -> summarize_run
 Prepare a run first:
 
 ```bash
-python scripts/prepare_run.py --workflow <workflow> --task <task-id>
+python scripts/eval.py start --workflow <workflow> --task <task-id> [--model <model>]
 ```
 
-Export the run environment printed by `prepare_run.py` before starting the coding agent:
+Export the run environment before starting the coding agent:
 
 ```bash
-export AI_EVAL_REPO=/path/to/ai-coding-evaluation
-export AI_EVAL_RUN_DIR=/path/to/ai-coding-evaluation/runs/<workflow>/<task-id>/<run-id>
-export AI_EVAL_TARGET_WORKTREE=$AI_EVAL_RUN_DIR/target
-export AI_EVAL_PHASE=coding
+eval "$(python /absolute/path/to/ai-coding-evaluation/scripts/eval.py env)"
 ```
 
-Then start Claude Code or Codex from the prepared target worktree:
+If you are already in the evaluation repo, this shorter form is equivalent:
+
+```bash
+eval "$(python scripts/eval.py env)"
+```
+
+`eval.py env` prints absolute paths, so the exported environment keeps working after you `cd` into the target worktree. You can also run it outside the evaluation repo with:
+
+```bash
+python /absolute/path/to/ai-coding-evaluation/scripts/eval.py --repo /absolute/path/to/ai-coding-evaluation env
+```
+
+Then start Claude Code or Codex from the same shell:
 
 ```bash
 cd "$AI_EVAL_TARGET_WORKTREE"
 ```
 
-Use `$AI_EVAL_RUN_DIR/task.md` as the coding prompt; use `$AI_EVAL_RUN_DIR/task.zh-CN.md` if you prefer Chinese. `acceptance.md` remains reviewer-only and is intentionally not copied into the run directory.
+The agent must be launched after `eval` so the hook process inherits `AI_EVAL_REPO`, `AI_EVAL_RUN_DIR`, `AI_EVAL_TARGET_WORKTREE`, and `AI_EVAL_PHASE`. Environment changes do not retroactively affect already-running Codex or Claude sessions.
+
+Use the task file copied into the run directory as the coding prompt: `runs/<workflow>/<task-id>/<run-id>/task.md`, or `task.zh-CN.md` if you prefer Chinese. `acceptance.md` remains reviewer-only and is intentionally not copied into the run directory.
 
 ## Codex
 
@@ -44,7 +55,7 @@ Codex hooks require the feature flag:
 codex_hooks = true
 ```
 
-Use `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` as copyable templates for `~/.codex/config.toml` and `~/.codex/hooks.json`, or for project-local `.codex/` config.
+Use `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` as copyable templates for Codex configuration. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python .../scripts/eval.py env)"` before launching Codex.
 
 The template records:
 
@@ -126,7 +137,7 @@ python scripts/summarize_run_events.py \
   --write
 ```
 
-`execute_run.py --write` also summarizes automatically when `events.jsonl` exists.
+`collect_run.py --write` also summarizes automatically when `events.jsonl` exists.
 
 Derived fields include:
 
