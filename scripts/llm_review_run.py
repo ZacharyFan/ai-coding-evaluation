@@ -203,11 +203,38 @@ def send_chat_completion(
         raise ValueError("LLM response did not match OpenAI chat completions shape") from error
 
 
+def json_error_excerpt(content: str, error: json.JSONDecodeError, *, context_lines: int = 2) -> str:
+    lines = redact_secrets(content).splitlines() or [""]
+    line_index = max(error.lineno - 1, 0)
+    start = max(line_index - context_lines, 0)
+    end = min(line_index + context_lines + 1, len(lines))
+    number_width = len(str(end))
+    excerpt: list[str] = []
+
+    for index in range(start, end):
+        line_number = index + 1
+        marker = ">" if index == line_index else " "
+        line = lines[index]
+        if len(line) > 240:
+            line = line[:237] + "..."
+        excerpt.append(f"{marker} {line_number:{number_width}d} | {line}")
+        if index == line_index:
+            pointer_column = min(max(error.colno, 1), len(line) + 1)
+            excerpt.append(f"  {' ' * number_width} | {' ' * (pointer_column - 1)}^")
+
+    return "\n".join(excerpt)
+
+
 def parse_llm_json(content: str) -> dict[str, Any]:
     try:
         data = json.loads(content)
     except json.JSONDecodeError as error:
-        raise ValueError("LLM response is not valid JSON") from error
+        excerpt = json_error_excerpt(content, error)
+        raise ValueError(
+            "LLM response is not valid JSON: "
+            f"{error.msg} at line {error.lineno}, column {error.colno}, char {error.pos}.\n"
+            f"Response excerpt:\n{excerpt}"
+        ) from error
     if not isinstance(data, dict):
         raise ValueError("LLM response JSON must be an object")
     return data

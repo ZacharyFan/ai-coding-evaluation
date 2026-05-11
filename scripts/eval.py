@@ -15,6 +15,7 @@ from scripts import report as report_module
 from scripts import score_run as score_module
 from scripts.adoption_lines import calculate_adoption
 from scripts.collect_run import collect_run as collect_run_evidence
+from scripts.install_agent_hooks import install_agent_hooks as install_agent_hook_files
 from scripts.prepare_run import prepare_run
 from scripts.show_solution_diff import show_solution_diff
 
@@ -191,6 +192,22 @@ def collect_run(
     return result
 
 
+def install_hooks(
+    root: Path,
+    run_dir: Path | None = None,
+    *,
+    agent: str = "all",
+    force: bool = False,
+) -> dict[str, list[str] | str | None]:
+    resolved = resolve_run_dir(root, run_dir)
+    return install_agent_hook_files(
+        repo=root,
+        target=Path(target_path(root, resolved)),
+        agent=agent,
+        force=force,
+    )
+
+
 def score_manual_run(
     root: Path,
     run_dir: Path | None = None,
@@ -340,6 +357,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     env = subparsers.add_parser("env", help="Print hook environment exports")
     add_run_dir_arg(env)
 
+    hooks = subparsers.add_parser(
+        "hooks", help="Install run-scoped Codex and Claude Code hook files"
+    )
+    add_run_dir_arg(hooks)
+    hooks.add_argument(
+        "--agent",
+        choices=["all", "codex", "claude"],
+        default="all",
+        help="Agent hook files to install. Defaults to both Codex and Claude Code.",
+    )
+    hooks.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing untracked generated hook files.",
+    )
+
     collect = subparsers.add_parser("collect", help="Collect tests, diff, and run evidence")
     add_run_dir_arg(collect)
     collect.add_argument(
@@ -443,6 +476,7 @@ def main(argv: list[str] | None = None) -> None:
             print()
             print("Next:")
             print('eval "$(python -m scripts.eval env)"')
+            print("python -m scripts.eval hooks  # optional hook evidence")
             print('cd "$AI_EVAL_TARGET_WORKTREE"')
             print(
                 "Use task.md in the run directory as the coding prompt. Do not read acceptance.md during coding."
@@ -457,6 +491,10 @@ def main(argv: list[str] | None = None) -> None:
             return
         if args.command == "env":
             print(shell_env(root, args.run_dir), end="")
+            return
+        if args.command == "hooks":
+            result = install_hooks(root, args.run_dir, agent=args.agent, force=args.force)
+            print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "collect":
             result = collect_run(

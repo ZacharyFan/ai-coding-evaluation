@@ -22,15 +22,19 @@ Export the run environment before starting the coding agent:
 
 ```bash
 eval "$(python -m scripts.eval env)"
+python -m scripts.eval hooks
 ```
 
 If you are outside the evaluation repo root, use the thin helper:
 
 ```bash
 eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
+cd "$AI_EVAL_REPO"
+python -m scripts.eval hooks
 ```
 
 `scripts.eval env` prints absolute paths, so the exported environment keeps working after you `cd` into the target worktree.
+`python -m scripts.eval hooks` writes the Codex and Claude Code hook files into the prepared target worktree and adds them to that worktree's local `.git/info/exclude`. It refuses to modify hook files that are already tracked by the target repo.
 
 Then start Claude Code or Codex from the same shell:
 
@@ -51,7 +55,7 @@ Codex hooks require the feature flag:
 codex_hooks = true
 ```
 
-Use `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` as copyable templates for Codex configuration. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python -m scripts.eval env)"` before launching Codex, or use `bin/ai-eval env` when outside the repo root.
+`python -m scripts.eval hooks` installs `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` into the current target worktree. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python -m scripts.eval env)"` before launching Codex, or use `bin/ai-eval env` when outside the repo root.
 
 The template records:
 
@@ -68,7 +72,7 @@ Codex hook coverage is useful but not a security boundary. Current Codex hooks d
 
 ## Claude Code
 
-Use `integrations/claude-code/settings.example.json` as a copyable template for Claude Code settings. Claude Code settings can live in:
+`python -m scripts.eval hooks` installs `integrations/claude-code/settings.example.json` into the current target worktree as `.claude/settings.local.json`. Claude Code settings can live in:
 
 ```text
 ~/.claude/settings.json
@@ -76,7 +80,7 @@ Use `integrations/claude-code/settings.example.json` as a copyable template for 
 .claude/settings.local.json
 ```
 
-Copy or merge the template into one of those settings files. For benchmark runs, prefer the target worktree's `.claude/settings.local.json` so the hook is scoped to that run instead of every Claude Code project.
+For benchmark runs, prefer the target worktree's `.claude/settings.local.json` so the hook is scoped to that run instead of every Claude Code project. If you need to merge with an existing project-specific Claude settings file, do it manually and keep secrets out of committed files.
 
 The template records:
 
