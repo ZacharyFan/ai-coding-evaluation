@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -116,7 +119,115 @@ def ensure_local_exclude(target: Path, relative_paths: list[Path]) -> Path | Non
     return exclude_path
 
 
-def install_file(repo: Path, target: Path, hook_file: HookFile, *, force: bool) -> Path:
+def hook_commands(entry: object) -> set[str]:
+    if not isinstance(entry, dict):
+        return set()
+    hooks = entry.get("hooks")
+    if not isinstance(hooks, list):
+        return set()
+    commands: set[str] = set()
+    for hook in hooks:
+        if isinstance(hook, dict) and isinstance(hook.get("command"), str):
+            commands.add(hook["command"])
+    return commands
+
+
+def merge_json_hooks(existing_text: str, incoming_text: str, destination: Path) -> str:
+    try:
+        existing = json.loads(existing_text)
+        incoming = json.loads(incoming_text)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"cannot merge invalid JSON hook config {destination}: {error.msg}"
+        ) from None
+
+    if not isinstance(existing, dict) or not isinstance(incoming, dict):
+        raise ValueError(f"cannot merge non-object JSON hook config: {destination}")
+    incoming_hooks = incoming.get("hooks")
+    if not isinstance(incoming_hooks, dict):
+        raise ValueError(f"cannot merge JSON hook config without hooks object: {destination}")
+
+    merged = copy.deepcopy(existing)
+    merged_hooks = merged.setdefault("hooks", {})
+    if not isinstance(merged_hooks, dict):
+        raise ValueError(f"cannot merge JSON hook config with non-object hooks: {destination}")
+
+    for event, incoming_entries in incoming_hooks.items():
+        if not isinstance(incoming_entries, list):
+            raise ValueError(f"cannot merge non-list hook entries for {event}: {destination}")
+        existing_entries = merged_hooks.setdefault(event, [])
+        if not isinstance(existing_entries, list):
+            raise ValueError(f"cannot merge into non-list hook entries for {event}: {destination}")
+        existing_commands = set().union(*(hook_commands(entry) for entry in existing_entries))
+        for incoming_entry in incoming_entries:
+            commands = hook_commands(incoming_entry)
+            if commands and commands <= existing_commands:
+                continue
+            existing_entries.append(copy.deepcopy(incoming_entry))
+            existing_commands.update(commands)
+
+    return json.dumps(merged, indent=2, sort_keys=True) + "\n"
+
+
+FEATURES_HEADER_RE = re.compile(r"^\s*\[features]\s*(?:#.*)?$")
+TABLE_HEADER_RE = re.compile(r"^\s*\[[^\]]+]\s*(?:#.*)?$")
+CODEX_HOOKS_RE = re.compile(r"^(\s*)codex_hooks\s*=.*$")
+
+
+def merge_codex_config(existing_text: str) -> str:
+    lines = existing_text.splitlines()
+    merged: list[str] = []
+    in_features = False
+    saw_features = False
+    saw_codex_hooks = False
+
+    for line in lines:
+        if in_features and TABLE_HEADER_RE.match(line) and not FEATURES_HEADER_RE.match(line):
+            if not saw_codex_hooks:
+                merged.append("codex_hooks = true")
+                saw_codex_hooks = True
+            in_features = False
+
+        if FEATURES_HEADER_RE.match(line):
+            saw_features = True
+            in_features = True
+            merged.append(line)
+            continue
+
+        if in_features and CODEX_HOOKS_RE.match(line):
+            indent = CODEX_HOOKS_RE.match(line).group(1)
+            merged.append(f"{indent}codex_hooks = true")
+            saw_codex_hooks = True
+            continue
+
+        merged.append(line)
+
+    if in_features and not saw_codex_hooks:
+        merged.append("codex_hooks = true")
+    if not saw_features:
+        if merged and merged[-1] != "":
+            merged.append("")
+        merged.extend(["[features]", "codex_hooks = true"])
+
+    return "\n".join(merged) + "\n"
+
+
+def merged_content(existing: str, incoming: str, destination: Path) -> str:
+    if destination.suffix == ".json":
+        return merge_json_hooks(existing, incoming, destination)
+    if destination.suffix == ".toml":
+        return merge_codex_config(existing)
+    raise ValueError(f"cannot merge unsupported hook config type: {destination}")
+
+
+def install_file(
+    repo: Path,
+    target: Path,
+    hook_file: HookFile,
+    *,
+    force: bool,
+    merge: bool,
+) -> Path:
     source = repo / hook_file.source
     destination = target / hook_file.destination
     if not source.exists():
@@ -131,10 +242,17 @@ def install_file(repo: Path, target: Path, hook_file: HookFile, *, force: bool) 
         existing = destination.read_text(encoding="utf-8")
         if existing == content:
             return destination
+        if merge:
+            content = merged_content(existing, content, hook_file.destination)
+            if existing == content:
+                return destination
+            destination.write_text(content, encoding="utf-8")
+            return destination
         if not force:
             raise FileExistsError(
                 f"hook config already exists with different content: {destination}. "
-                "Pass --force to overwrite untracked generated files."
+                "Pass --merge to append recorder hooks, or --force to overwrite untracked "
+                "generated files."
             )
 
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -154,11 +272,15 @@ def install_agent_hooks(
     target: Path,
     agent: str = "all",
     force: bool = False,
+    merge: bool = False,
 ) -> dict[str, list[str] | str | None]:
+    if force and merge:
+        raise ValueError("--force and --merge are mutually exclusive")
+
     installed: list[Path] = []
     for name in selected_agents(agent):
         for hook_file in HOOK_FILES[name]:
-            installed.append(install_file(repo, target, hook_file, force=force))
+            installed.append(install_file(repo, target, hook_file, force=force, merge=merge))
 
     relative_paths = [path.relative_to(target) for path in installed]
     exclude_path = ensure_local_exclude(target, relative_paths)
@@ -196,6 +318,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Overwrite existing untracked generated hook files.",
     )
+    parser.add_argument(
+        "--merge",
+        action="store_true",
+        help="Merge recorder hooks into existing untracked hook files without duplicating commands.",
+    )
     return parser.parse_args(argv)
 
 
@@ -207,8 +334,15 @@ def main(argv: list[str] | None = None) -> None:
             target=resolve_target(args.target),
             agent=args.agent,
             force=args.force,
+            merge=args.merge,
         )
-    except (FileNotFoundError, FileExistsError, NotADirectoryError, RuntimeError) as error:
+    except (
+        FileNotFoundError,
+        FileExistsError,
+        NotADirectoryError,
+        RuntimeError,
+        ValueError,
+    ) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from None
 

@@ -75,7 +75,25 @@ eval "$(python -m scripts.eval env)"
 python -m scripts.eval hooks
 ```
 
-The installer writes run-scoped Codex and Claude Code hook files under the current target worktree and adds them to that worktree's local git exclude. The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are outside the evaluation repo root, use `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"` first, then run `python -m scripts.eval hooks` from the evaluation repo. Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
+The installer writes run-scoped Codex and Claude Code hook files under the current target worktree, then adds them to that worktree's local git exclude.
+
+If untracked hook files already exist, use:
+
+```bash
+python -m scripts.eval hooks --merge
+```
+
+This appends the evaluation recorder hooks without duplicating commands. Tracked hook files are never modified.
+
+The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are outside the evaluation repo root, run this first:
+
+```bash
+eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
+```
+
+Then run `python -m scripts.eval hooks` from the evaluation repo.
+
+Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
 
 </details>
 
