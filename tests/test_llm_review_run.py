@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from scripts import llm_review_run as llm_review_module
-from scripts.llm_review_run import build_review_prompt, llm_review_run, redact_secrets
+from scripts.llm_review_run import (
+    build_review_prompt,
+    llm_review_run,
+    parse_llm_json,
+    redact_secrets,
+)
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -159,6 +164,21 @@ def test_llm_review_run_invalid_llm_json_does_not_overwrite_existing_score(tmp_p
         )
 
     assert json.loads(score_path.read_text(encoding="utf-8"))["score"] == 88
+
+
+def test_invalid_llm_json_error_includes_position_and_redacted_excerpt():
+    content = 'Here is the JSON:\n{"api_key": "sk-secret", "review": }\n'
+
+    with pytest.raises(ValueError) as error:
+        parse_llm_json(content)
+
+    message = str(error.value)
+    assert "LLM response is not valid JSON" in message
+    assert "line 1, column 1" in message
+    assert "Response excerpt:" in message
+    assert "> 1 | Here is the JSON:" in message
+    assert "^" in message
+    assert "sk-secret" not in message
 
 
 def test_llm_review_run_rejects_out_of_range_llm_scores(tmp_path, monkeypatch):

@@ -200,6 +200,7 @@ def main() -> None:
     print()
     print("For hook-based process evidence, start the agent with:")
     print(f'eval "$(python -m scripts.eval env --run-dir {shlex.quote(str(run_dir))})"')
+    print(f"python -m scripts.eval hooks --run-dir {shlex.quote(str(run_dir))}")
     print()
     print("After the workflow modifies the target worktree, collect evidence with:")
     print("python -m scripts.collect_run \\")

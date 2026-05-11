@@ -72,9 +72,10 @@ Before starting Claude Code or Codex, export the current run environment:
 
 ```bash
 eval "$(python -m scripts.eval env)"
+python -m scripts.eval hooks
 ```
 
-The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are outside the evaluation repo root, use `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"` instead. Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
+The installer writes run-scoped Codex and Claude Code hook files under the current target worktree and adds them to that worktree's local git exclude. The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are outside the evaluation repo root, use `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"` first, then run `python -m scripts.eval hooks` from the evaluation repo. Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
 
 </details>
 

@@ -72,9 +72,10 @@ python -m scripts.eval start --workflow <workflow> --task <task-id> [--model <mo
 
 ```bash
 eval "$(python -m scripts.eval env)"
+python -m scripts.eval hooks
 ```
 
-agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你不在 evaluation 仓库根目录，改用 `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"`。Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+安装脚本会把 run-scoped Codex 和 Claude Code hook 文件写入当前 target worktree，并加入该 worktree 的本地 git exclude。agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你不在 evaluation 仓库根目录，先执行 `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"`，再回到 evaluation 仓库执行 `python -m scripts.eval hooks`。Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
 
 </details>
 

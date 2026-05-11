@@ -79,6 +79,24 @@ def write_task(root: Path, repo: Path, base_ref: str) -> None:
     )
 
 
+def write_hook_templates(root: Path) -> None:
+    codex_dir = root / "integrations" / "codex"
+    claude_dir = root / "integrations" / "claude-code"
+    codex_dir.mkdir(parents=True)
+    claude_dir.mkdir(parents=True)
+    (codex_dir / "config.example.toml").write_text(
+        "[features]\ncodex_hooks = true\n", encoding="utf-8"
+    )
+    write_json(
+        codex_dir / "hooks.example.json",
+        {"hooks": {"PostToolUse": [{"hooks": [{"command": "codex hook"}]}]}},
+    )
+    write_json(
+        claude_dir / "settings.example.json",
+        {"hooks": {"PostToolUse": [{"hooks": [{"command": "claude hook"}]}]}},
+    )
+
+
 def init_eval_root(tmp_path: Path) -> tuple[Path, str]:
     remote, base_ref = init_remote_repo(tmp_path)
     root = tmp_path / "evaluation"
@@ -243,6 +261,56 @@ def test_collect_uses_current_pointer(tmp_path):
     assert run["diff"]["files_changed"] == 1
     assert "blue" in (run_dir / "diff.patch").read_text(encoding="utf-8")
     assert "$ test -f value.txt" in (run_dir / "test.log").read_text(encoding="utf-8")
+
+
+def test_hooks_uses_current_pointer_and_installs_agent_configs(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_hook_templates(root)
+    eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")
+
+    result = eval_module.install_hooks(root)
+    target = Path(eval_module.target_path(root))
+
+    assert result["installed"] == [
+        ".codex/config.toml",
+        ".codex/hooks.json",
+        ".claude/settings.local.json",
+    ]
+    assert (target / ".codex" / "hooks.json").exists()
+    assert (target / ".claude" / "settings.local.json").exists()
+    assert run_git(target, "status", "--short") == ""
+
+
+def test_hooks_cli_uses_run_dir_override(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_hook_templates(root)
+    eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")
+    run_dir = root / "runs" / "baseline" / "example-task" / "demo-001"
+    target = run_dir / "target"
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.eval",
+            "--repo",
+            str(root),
+            "hooks",
+            "--run-dir",
+            str(run_dir),
+            "--agent",
+            "codex",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    result = json.loads(process.stdout)
+    assert result["installed"] == [".codex/config.toml", ".codex/hooks.json"]
+    assert (target / ".codex" / "hooks.json").exists()
 
 
 def test_score_uses_current_pointer_and_writes_score(tmp_path):
