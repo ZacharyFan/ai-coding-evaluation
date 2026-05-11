@@ -313,6 +313,53 @@ def test_hooks_cli_uses_run_dir_override(tmp_path):
     assert (target / ".codex" / "hooks.json").exists()
 
 
+def test_hooks_cli_merge_appends_to_existing_untracked_config(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_hook_templates(root)
+    eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")
+    run_dir = root / "runs" / "baseline" / "example-task" / "demo-001"
+    target = run_dir / "target"
+    codex = target / ".codex"
+    codex.mkdir()
+    (codex / "config.toml").write_text("[features]\nother = true\n", encoding="utf-8")
+    write_json(
+        codex / "hooks.json",
+        {"hooks": {"PostToolUse": [{"hooks": [{"command": "custom hook"}]}]}},
+    )
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.eval",
+            "--repo",
+            str(root),
+            "hooks",
+            "--run-dir",
+            str(run_dir),
+            "--agent",
+            "codex",
+            "--merge",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    assert "codex_hooks = true" in (codex / "config.toml").read_text(encoding="utf-8")
+    hooks = json.loads((codex / "hooks.json").read_text(encoding="utf-8"))
+    commands = [
+        hook["command"]
+        for entry in hooks["hooks"]["PostToolUse"]
+        for hook in entry.get("hooks", [])
+        if "command" in hook
+    ]
+    assert "custom hook" in commands
+    assert "codex hook" in commands
+
+
 def test_score_uses_current_pointer_and_writes_score(tmp_path):
     root, _ = init_eval_root(tmp_path)
     eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")

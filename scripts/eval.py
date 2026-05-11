@@ -198,6 +198,7 @@ def install_hooks(
     *,
     agent: str = "all",
     force: bool = False,
+    merge: bool = False,
 ) -> dict[str, list[str] | str | None]:
     resolved = resolve_run_dir(root, run_dir)
     return install_agent_hook_files(
@@ -205,6 +206,7 @@ def install_hooks(
         target=Path(target_path(root, resolved)),
         agent=agent,
         force=force,
+        merge=merge,
     )
 
 
@@ -372,6 +374,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Overwrite existing untracked generated hook files.",
     )
+    hooks.add_argument(
+        "--merge",
+        action="store_true",
+        help="Merge recorder hooks into existing untracked hook files without duplicating commands.",
+    )
 
     collect = subparsers.add_parser("collect", help="Collect tests, diff, and run evidence")
     add_run_dir_arg(collect)
@@ -493,7 +500,9 @@ def main(argv: list[str] | None = None) -> None:
             print(shell_env(root, args.run_dir), end="")
             return
         if args.command == "hooks":
-            result = install_hooks(root, args.run_dir, agent=args.agent, force=args.force)
+            result = install_hooks(
+                root, args.run_dir, agent=args.agent, force=args.force, merge=args.merge
+            )
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "collect":

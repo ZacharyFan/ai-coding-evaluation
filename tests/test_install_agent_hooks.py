@@ -79,11 +79,106 @@ def test_existing_different_untracked_file_requires_force(tmp_path):
     hooks.parent.mkdir()
     hooks.write_text("{}\n", encoding="utf-8")
 
-    with pytest.raises(FileExistsError, match="Pass --force"):
+    with pytest.raises(FileExistsError, match="Pass --merge"):
         install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex")
 
     install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex", force=True)
     assert "--adapter codex" in hooks.read_text(encoding="utf-8")
+
+
+def test_merge_preserves_existing_codex_config_and_hooks_without_duplicates(tmp_path):
+    target = init_target_repo(tmp_path)
+    codex = target / ".codex"
+    codex.mkdir()
+    (codex / "config.toml").write_text(
+        '[features]\nother_feature = true\ncodex_hooks = false\n\n[ui]\ntheme = "dark"\n',
+        encoding="utf-8",
+    )
+    (codex / "hooks.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "PostToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [{"type": "command", "command": "custom codex hook"}],
+                        }
+                    ]
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex", merge=True)
+    install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex", merge=True)
+
+    config = (codex / "config.toml").read_text(encoding="utf-8")
+    hooks = json.loads((codex / "hooks.json").read_text(encoding="utf-8"))
+    post_tool_use = hooks["hooks"]["PostToolUse"]
+    commands = [
+        hook["command"]
+        for entry in post_tool_use
+        for hook in entry.get("hooks", [])
+        if "command" in hook
+    ]
+
+    assert "other_feature = true" in config
+    assert "codex_hooks = true" in config
+    assert "codex_hooks = false" not in config
+    assert "[ui]" in config
+    assert commands.count("custom codex hook") == 1
+    assert (
+        commands.count('python "$AI_EVAL_REPO/scripts/record_hook_event.py" --adapter codex') == 1
+    )
+    assert "SessionStart" in hooks["hooks"]
+
+
+def test_merge_preserves_existing_claude_hooks_without_duplicates(tmp_path):
+    target = init_target_repo(tmp_path)
+    claude = target / ".claude"
+    claude.mkdir()
+    (claude / "settings.local.json").write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "Stop": [
+                        {
+                            "hooks": [{"type": "command", "command": "custom claude hook"}],
+                        }
+                    ]
+                }
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    install_agent_hooks(repo=REPO_ROOT, target=target, agent="claude", merge=True)
+    install_agent_hooks(repo=REPO_ROOT, target=target, agent="claude", merge=True)
+
+    settings = json.loads((claude / "settings.local.json").read_text(encoding="utf-8"))
+    stop_commands = [
+        hook["command"]
+        for entry in settings["hooks"]["Stop"]
+        for hook in entry.get("hooks", [])
+        if "command" in hook
+    ]
+
+    assert stop_commands.count("custom claude hook") == 1
+    assert (
+        stop_commands.count('python "$AI_EVAL_REPO/scripts/record_hook_event.py" --adapter claude')
+        == 1
+    )
+    assert "InstructionsLoaded" in settings["hooks"]
+
+
+def test_force_and_merge_are_mutually_exclusive(tmp_path):
+    target = init_target_repo(tmp_path)
+
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        install_agent_hooks(repo=REPO_ROOT, target=target, force=True, merge=True)
 
 
 def test_tracked_target_hook_file_is_never_modified(tmp_path):
@@ -94,8 +189,9 @@ def test_tracked_target_hook_file_is_never_modified(tmp_path):
     run_git(target, "add", ".codex/hooks.json")
     run_git(target, "commit", "-m", "test: track codex hooks")
 
-    with pytest.raises(RuntimeError, match="refusing to modify tracked target hook config"):
-        install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex", force=True)
+    for kwargs in ({"force": True}, {"merge": True}):
+        with pytest.raises(RuntimeError, match="refusing to modify tracked target hook config"):
+            install_agent_hooks(repo=REPO_ROOT, target=target, agent="codex", **kwargs)
 
     assert hooks.read_text(encoding="utf-8") == "{}\n"
 

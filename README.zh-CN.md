@@ -75,7 +75,25 @@ eval "$(python -m scripts.eval env)"
 python -m scripts.eval hooks
 ```
 
-安装脚本会把 run-scoped Codex 和 Claude Code hook 文件写入当前 target worktree，并加入该 worktree 的本地 git exclude。agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你不在 evaluation 仓库根目录，先执行 `eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"`，再回到 evaluation 仓库执行 `python -m scripts.eval hooks`。Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+安装脚本会把 run-scoped Codex 和 Claude Code hook 文件写入当前 target worktree，并加入该 worktree 的本地 git exclude。
+
+如果未被 git 跟踪的 hook 文件已经存在，使用：
+
+```bash
+python -m scripts.eval hooks --merge
+```
+
+它会追加评估 recorder hook，并避免重复命令。已被 target repo 跟踪的 hook 文件永远不会被修改。
+
+agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你不在 evaluation 仓库根目录，先执行：
+
+```bash
+eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
+```
+
+然后回到 evaluation 仓库执行 `python -m scripts.eval hooks`。
+
+Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
 
 </details>
 

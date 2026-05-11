@@ -34,7 +34,18 @@ python -m scripts.eval hooks
 ```
 
 `scripts.eval env` prints absolute paths, so the exported environment keeps working after you `cd` into the target worktree.
-`python -m scripts.eval hooks` writes the Codex and Claude Code hook files into the prepared target worktree and adds them to that worktree's local `.git/info/exclude`. It refuses to modify hook files that are already tracked by the target repo.
+
+`python -m scripts.eval hooks` writes the Codex and Claude Code hook files into the prepared target worktree, then adds them to that worktree's local `.git/info/exclude`.
+
+Tracked hook files are never modified.
+
+If untracked hook files already exist, run:
+
+```bash
+python -m scripts.eval hooks --merge
+```
+
+This appends the evaluation recorder hooks without duplicating commands. Use `--force` only when you want to overwrite untracked generated hook files.
 
 Then start Claude Code or Codex from the same shell:
 
@@ -55,7 +66,11 @@ Codex hooks require the feature flag:
 codex_hooks = true
 ```
 
-`python -m scripts.eval hooks` installs `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` into the current target worktree. The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python -m scripts.eval env)"` before launching Codex, or use `bin/ai-eval env` when outside the repo root.
+`python -m scripts.eval hooks` installs `integrations/codex/config.example.toml` and `integrations/codex/hooks.example.json` into the current target worktree.
+
+With `--merge`, it keeps existing untracked Codex hooks, ensures `features.codex_hooks = true`, and appends the evaluation recorder hooks once per event.
+
+The hook command intentionally uses `$AI_EVAL_REPO`, so run `eval "$(python -m scripts.eval env)"` before launching Codex, or use `bin/ai-eval env` when outside the repo root.
 
 The template records:
 
@@ -80,7 +95,15 @@ Codex hook coverage is useful but not a security boundary. Current Codex hooks d
 .claude/settings.local.json
 ```
 
-For benchmark runs, prefer the target worktree's `.claude/settings.local.json` so the hook is scoped to that run instead of every Claude Code project. If you need to merge with an existing project-specific Claude settings file, do it manually and keep secrets out of committed files.
+For benchmark runs, prefer the target worktree's `.claude/settings.local.json` so the hook is scoped to that run instead of every Claude Code project.
+
+If an untracked project-specific Claude settings file already exists, use:
+
+```bash
+python -m scripts.eval hooks --agent claude --merge
+```
+
+This keeps existing hooks and appends the evaluation recorder hooks once per event. Keep secrets out of committed files.
 
 The template records:
 
