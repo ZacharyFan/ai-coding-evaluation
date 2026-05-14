@@ -59,6 +59,19 @@ dashboard = 只读的对比投影
 
 先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后用快捷 CLI 走最短评分闭环。
 
+<details>
+<summary><strong>可选：</strong>启动 run 前浏览可用任务</summary>
+
+当你想在 `prepare_run` 前选择或查看 benchmark 任务时，生成双语任务索引：
+
+```bash
+python -m scripts.eval registry
+```
+
+`benchmark_registry.py` 会写入 `benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`。它是 `benchmarks/tasks/` 下可执行任务的语言无关目录，只展示任务 metadata 和入口，不展示 run 结果。
+
+</details>
+
 1. 准备一次 run：
 
 ```bash
@@ -180,12 +193,9 @@ python -m scripts.eval llm-review
 ```bash
 python -m scripts.eval report
 python -m scripts.eval dashboard
-python -m scripts.eval registry
 ```
 
 `report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
-
-`benchmark_registry.py` 会生成双语任务索引：`benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`。它是 `benchmarks/tasks/` 下可执行任务的语言无关目录，只展示任务 metadata 和入口，不展示 run 结果。
 
 <details>
 <summary><strong>可选：</strong>生成链路指标</summary>
