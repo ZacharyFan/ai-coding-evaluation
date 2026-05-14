@@ -180,9 +180,12 @@ For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepsee
 ```bash
 python -m scripts.eval report
 python -m scripts.eval dashboard
+python -m scripts.eval registry
 ```
 
 `report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
+
+`benchmark_registry.py` generates the bilingual task registry at `benchmarks/index.html` and `benchmarks/index.zh-CN.html`. It is a language-agnostic catalog of executable tasks under `benchmarks/tasks/`; it describes task metadata and entrypoints, not run results.
 
 <details>
 <summary><strong>Optional:</strong> generate context link metrics</summary>
@@ -210,6 +213,7 @@ python -m scripts.score_run --task benchmarks/tasks/<task-id>/task.json --run ru
 python -m scripts.llm_review_run --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
 python -m scripts.report --runs runs
 python -m scripts.dashboard --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+python -m scripts.benchmark_registry --tasks benchmarks/tasks --output benchmarks/index.html
 ```
 
 See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
@@ -257,6 +261,7 @@ Use these checks when changing benchmark tasks, templates, schemas, scripts, or 
 
 ```bash
 python -m scripts.validate_task
+python -m scripts.eval registry
 ruff check scripts tests
 ruff format --check scripts tests
 python -m pytest
@@ -268,6 +273,7 @@ These commands validate the benchmark repository itself. They are maintenance an
 
 ```text
 benchmarks/tasks/       Real benchmark tasks that participate in runs and reports
+benchmarks/index.html   Generated bilingual task registry entrypoint
 benchmarks/local/       Private local experiment tasks, ignored by git
 benchmarks/templates/   Copyable task-authoring templates that are not run by default
 runs/                   Local run evidence and target worktrees, ignored by git

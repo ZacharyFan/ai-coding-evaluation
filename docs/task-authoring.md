@@ -119,12 +119,13 @@ Run both commands before opening a PR:
 
 ```bash
 python -m scripts.validate_task benchmarks/tasks/<task-id>
+python -m scripts.eval registry
 ruff check scripts tests
 ruff format --check scripts tests
 python -m pytest
 ```
 
-The first command validates the task contribution. The second command protects the benchmark tooling itself.
+The first command validates the task contribution. The registry command refreshes `benchmarks/index.html` and `benchmarks/index.zh-CN.html` so the task catalog reflects the current public task set. The remaining commands protect the benchmark tooling itself.
 
 Templates are validated explicitly with:
 

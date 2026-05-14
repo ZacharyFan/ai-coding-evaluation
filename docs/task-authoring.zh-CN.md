@@ -119,12 +119,13 @@ Make it better.
 
 ```bash
 python -m scripts.validate_task benchmarks/tasks/<task-id>
+python -m scripts.eval registry
 ruff check scripts tests
 ruff format --check scripts tests
 python -m pytest
 ```
 
-第一个命令验证任务贡献本身。第二个命令保护 benchmark 工具链。
+第一个命令验证任务贡献本身。registry 命令会刷新 `benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`，确保任务目录反映当前公开任务集。其余命令保护 benchmark 工具链。
 
 显式校验模板：
 

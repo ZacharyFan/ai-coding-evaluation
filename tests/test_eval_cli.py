@@ -79,6 +79,43 @@ def write_task(root: Path, repo: Path, base_ref: str) -> None:
     )
 
 
+def write_registry_task(root: Path) -> None:
+    task_dir = root / "benchmarks" / "tasks" / "python-feature-l1-c1"
+    task_dir.mkdir(parents=True)
+    (task_dir / "task.md").write_text(
+        "# Task: Add import preview\n\nScenario: data import (`importer`).\n\n"
+        "Expected behavior:\n\n- preview returns parsed rows\n",
+        encoding="utf-8",
+    )
+    (task_dir / "task.zh-CN.md").write_text(
+        "# 任务：新增导入预览\n\n场景：数据导入（importer）。\n\n"
+        "期望行为：\n\n- preview 返回解析后的行\n",
+        encoding="utf-8",
+    )
+    write_json(
+        task_dir / "task.json",
+        {
+            "id": "python-feature-l1-c1",
+            "type": "feature",
+            "effort_size": "small",
+            "complexity": {
+                "business_complexity": "L1_standardized",
+                "context_maturity": "C1_complete",
+            },
+            "time_budget_minutes": 20,
+            "max_human_interventions": 1,
+            "max_cost_usd": 0.5,
+            "hidden_checks": [],
+            "context_sources": [],
+            "target": {
+                "language": "python",
+                "package_manager": "pip",
+                "test_commands": ["pytest tests/test_feature.py"],
+            },
+        },
+    )
+
+
 def write_hook_templates(root: Path) -> None:
     codex_dir = root / "integrations" / "codex"
     claude_dir = root / "integrations" / "claude-code"
@@ -244,6 +281,34 @@ def test_module_entrypoints_show_help():
 
         assert process.returncode == 0
         assert "usage:" in process.stdout
+
+
+def test_registry_cli_writes_bilingual_task_registry(tmp_path):
+    root = tmp_path / "evaluation"
+    write_registry_task(root)
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.eval",
+            "--repo",
+            str(root),
+            "registry",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    assert "benchmarks/index.html" in process.stdout
+    assert "benchmarks/index.zh-CN.html" in process.stdout
+    assert "A static registry for public benchmark tasks" in (
+        root / "benchmarks" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "新增导入预览" in (root / "benchmarks" / "index.zh-CN.html").read_text(encoding="utf-8")
 
 
 def test_collect_uses_current_pointer(tmp_path):

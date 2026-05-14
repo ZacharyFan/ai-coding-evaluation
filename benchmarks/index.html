@@ -1,0 +1,1752 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Benchmark Task Registry</title>
+  <style>
+
+    :root {
+      --bg: #f6f7f2;
+      --surface: #ffffff;
+      --ink: #172033;
+      --muted: #607085;
+      --line: #d9dfda;
+      --line-strong: #c3ccc5;
+      --green: #147a4b;
+      --green-soft: #e6f4ec;
+      --blue: #2857a4;
+      --blue-soft: #e7eefb;
+      --rose: #a8374f;
+      --rose-soft: #fae8ed;
+      --violet: #6846a3;
+      --violet-soft: #efe9fb;
+      --shadow: 0 18px 45px rgba(23, 32, 51, 0.08);
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 247, 242, 0.96) 320px),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; }
+    button, select { cursor: pointer; }
+
+    :focus-visible {
+      outline: 3px solid rgba(20, 122, 75, 0.42);
+      outline-offset: 3px;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      border: 0;
+      padding: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .page { min-height: 100vh; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(217, 223, 218, 0.82);
+      background: rgba(246, 247, 242, 0.9);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 14px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      border: 1px solid #111827;
+      background: #111827;
+      color: #ffffff;
+      place-items: center;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.1;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 8px 12px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .link-button:hover {
+      border-color: #111827;
+      box-shadow: 0 10px 24px rgba(23, 32, 51, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .link-button.primary {
+      border-color: #111827;
+      background: #111827;
+      color: #ffffff;
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .hero {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 54px 0 28px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 6px 10px;
+      color: var(--green);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 18px 0 14px;
+      font-size: 48px;
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .locale-zh h1 {
+      max-width: none;
+      font-size: 42px;
+      white-space: nowrap;
+    }
+
+    .hero-copy {
+      max-width: 780px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 14px 0 22px;
+    }
+
+    .summary-card {
+      min-height: 120px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(23, 32, 51, 0.04);
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .summary-value {
+      margin-top: 8px;
+      color: var(--ink);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .summary-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .controls-band {
+      border-block: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(132px, 170px));
+      gap: 10px;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 16px 0;
+    }
+
+    .field {
+      position: relative;
+      min-width: 0;
+    }
+
+    .field svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      color: var(--muted);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .search-input,
+    .select-input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 10px 12px;
+    }
+
+    .search-input { padding-left: 40px; }
+
+    .select-input {
+      appearance: none;
+      padding-right: 34px;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position:
+        calc(100% - 17px) 19px,
+        calc(100% - 11px) 19px;
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+    }
+
+    .registry {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 56px;
+    }
+
+    .registry-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    .registry-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .result-count {
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .task-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: 1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .task-card {
+      display: flex;
+      height: 100%;
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 10px 26px rgba(23, 32, 51, 0.055);
+      flex-direction: column;
+      overflow: hidden;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .task-card:hover {
+      border-color: #9ca7a1;
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 16px 12px;
+    }
+
+    .task-id {
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+
+    .pill.bugfix { background: var(--rose-soft); color: var(--rose); }
+    .pill.feature { background: var(--green-soft); color: var(--green); }
+    .pill.refactor { background: var(--violet-soft); color: var(--violet); }
+    .pill.test { background: var(--blue-soft); color: var(--blue); }
+
+    .card-body {
+      display: flex;
+      padding: 16px;
+      flex: 1;
+      flex-direction: column;
+    }
+
+    .task-title {
+      margin: 0;
+      min-height: 46px;
+      font-size: 19px;
+      line-height: 1.22;
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .scenario {
+      margin-top: 7px;
+      min-height: 40px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .summary {
+      margin: 14px 0 0;
+      min-height: 63px;
+      color: #2a3547;
+      font-size: 14px;
+      line-height: 1.5;
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .metric {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcf8;
+      padding: 8px;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--ink);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 16px;
+      line-height: 1.1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      height: 60px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfcf8;
+      padding: 5px 8px;
+      color: #405067;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .command {
+      display: block;
+      width: 100%;
+      height: 54px;
+      margin-top: 14px;
+      border: 1px solid #d7ded6;
+      border-radius: 6px;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 10px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .card-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+
+    .card-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fbfcf8;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 750;
+      transition: background 180ms ease, border-color 180ms ease;
+    }
+
+    .card-action:hover {
+      border-color: #111827;
+      background: #f0f4ef;
+    }
+
+    .empty-state {
+      display: none;
+      border: 1px dashed var(--line-strong);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      padding: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 18px;
+    }
+
+    @media (max-width: 980px) {
+      .summary-grid, .task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls .field:first-child { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 640px) {
+      .nav, .registry-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .nav-actions { justify-content: stretch; }
+      .link-button { justify-content: center; }
+      .summary-grid, .controls, .task-grid, .metric-row { grid-template-columns: 1fr; }
+      .hero { padding-top: 36px; }
+      h1 { font-size: 30px; }
+      .locale-zh h1 { font-size: 28px; }
+      .hero-copy { font-size: 16px; }
+      .result-count { white-space: normal; }
+    }
+
+    @media (max-width: 390px) {
+      .locale-zh h1 { font-size: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
+    }
+
+  </style>
+</head>
+<body class="locale-en">
+  <div class="page">
+    <header class="topbar">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="#">
+          <span class="brand-mark" aria-hidden="true">B</span>
+          <span>
+            Benchmark Registry
+            <small>ai-coding-evaluation</small>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="link-button" href="../README.md">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"></path></svg>
+            README
+          </a>
+          <a class="link-button" href="index.zh-CN.html">中文</a>
+          <a class="link-button primary" href="tasks/">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            Task source
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <span class="eyebrow">benchmarks/tasks snapshot</span>
+        <h1 id="page-title">Executable benchmark tasks, one screen.</h1>
+        <p class="hero-copy">A static registry for public benchmark tasks: type, complexity, context maturity, budget, scope, checks, and the exact evaluation command.</p>
+      </section>
+
+      <section class="summary-grid" aria-label="Benchmark summary">
+        <article class="summary-card">
+          <div class="summary-label">Executable tasks</div>
+          <div class="summary-value" id="taskTotal">36</div>
+          <div class="summary-note">Every task has task.json and executable tests.sh.</div>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label">Task types</div>
+          <div class="summary-value" id="typeTotal">4</div>
+          <div class="summary-note">Bugfix, feature, refactor, test.</div>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label">Complexity cells</div>
+          <div class="summary-value" id="matrixTotal">9</div>
+          <div class="summary-note">L1-L3 crossed with C1-C3.</div>
+        </article>
+        <article class="summary-card">
+          <div class="summary-label">Median budget</div>
+          <div class="summary-value" id="medianBudget">40m</div>
+          <div class="summary-note">Budget range:<span id="budgetRange">25-55 minutes</span>.</div>
+        </article>
+      </section>
+
+      <section class="controls-band" aria-label="Filters">
+        <div class="controls">
+          <label class="field">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <span class="visually-hidden">Search tasks</span>
+            <input id="searchInput" class="search-input" type="search" placeholder="Search by title, id, scope, scenario..." autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="visually-hidden">Type</span>
+            <select id="typeFilter" class="select-input" aria-label="Task type"></select>
+          </label>
+          <label class="field">
+            <span class="visually-hidden">Effort</span>
+            <select id="effortFilter" class="select-input" aria-label="Effort size"></select>
+          </label>
+          <label class="field">
+            <span class="visually-hidden">Complexity</span>
+            <select id="complexityFilter" class="select-input" aria-label="Business complexity"></select>
+          </label>
+          <label class="field">
+            <span class="visually-hidden">Sort</span>
+            <select id="sortSelect" class="select-input" aria-label="Sort tasks">
+              <option value="id">Sort by id</option>
+              <option value="time">Sort by time budget</option>
+              <option value="cost">Sort by cost budget</option>
+              <option value="type">Sort by type</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="registry" aria-labelledby="registry-title">
+        <div class="registry-head">
+          <h2 class="registry-title" id="registry-title">Merged Tasks</h2>
+          <div class="result-count" id="resultCount">Showing 36 of 36</div>
+        </div>
+        <div class="empty-state" id="emptyState" role="status">
+          <strong>No matching tasks</strong>
+          Tighten the question less: remove a filter or use a broader keyword.
+        </div>
+        <div class="task-grid" id="taskGrid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+
+    const TASKS = [
+      {
+            "b": "L1_standardized",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l1-c1",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-bugfix-l1-c1",
+            "interventions": 2,
+            "jsonHref": "tasks/go-bugfix-l1-c1/task.json",
+            "minutes": 25,
+            "scenario": "catalog (`catalog`)",
+            "scope": [
+                  "catalog/**",
+                  "docs/contexts/catalog.md"
+            ],
+            "scopeMore": 0,
+            "summary": "blank SKUs return an error; valid active products still pass; the fix stays inside the catalog domain",
+            "taskHref": "tasks/go-bugfix-l1-c1/task.md",
+            "testsHref": "tasks/go-bugfix-l1-c1/tests.sh",
+            "title": "Reject blank catalog SKUs",
+            "type": "bugfix"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l1-c2",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-bugfix-l1-c2",
+            "interventions": 2,
+            "jsonHref": "tasks/go-bugfix-l1-c2/task.json",
+            "minutes": 25,
+            "scenario": "tax rules (`taxrules`)",
+            "scope": [
+                  "taxrules/**",
+                  "docs/contexts/taxrules.md"
+            ],
+            "scopeMore": 0,
+            "summary": "half-cent and above rounds up; exact-cent tax stays unchanged; invalid rates still error",
+            "taskHref": "tasks/go-bugfix-l1-c2/task.md",
+            "testsHref": "tasks/go-bugfix-l1-c2/tests.sh",
+            "title": "Round tax to the nearest cent",
+            "type": "bugfix"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l1-c3",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-bugfix-l1-c3",
+            "interventions": 2,
+            "jsonHref": "tasks/go-bugfix-l1-c3/task.json",
+            "minutes": 25,
+            "scenario": "customer profile (`customerprofile`)",
+            "scope": [
+                  "customerprofile/**"
+            ],
+            "scopeMore": 0,
+            "summary": "local and domain parts are lowercased; missing @ still errors; changes stay in customerprofile",
+            "taskHref": "tasks/go-bugfix-l1-c3/task.md",
+            "testsHref": "tasks/go-bugfix-l1-c3/tests.sh",
+            "title": "Lowercase normalized emails",
+            "type": "bugfix"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l2-c1",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-bugfix-l2-c1",
+            "interventions": 3,
+            "jsonHref": "tasks/go-bugfix-l2-c1/task.json",
+            "minutes": 40,
+            "scenario": "checkout flow (`checkout`)",
+            "scope": [
+                  "checkout/**",
+                  "cart/**",
+                  "pricing/**"
+            ],
+            "scopeMore": 3,
+            "summary": "any unavailable line returns an error; tax and shipping math stay unchanged; links cart/pricing/inventory/shipping",
+            "taskHref": "tasks/go-bugfix-l2-c1/task.md",
+            "testsHref": "tasks/go-bugfix-l2-c1/tests.sh",
+            "title": "Validate all checkout inventory lines",
+            "type": "bugfix"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l2-c2",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-bugfix-l2-c2",
+            "interventions": 3,
+            "jsonHref": "tasks/go-bugfix-l2-c2/task.json",
+            "minutes": 40,
+            "scenario": "returns flow (`returns`)",
+            "scope": [
+                  "returns/**",
+                  "orders/**",
+                  "refunds/**"
+            ],
+            "scopeMore": 3,
+            "summary": "inventory is unchanged when ledger fails; successful returns still record refund and ledger; links orders/refunds/inventory/ledger",
+            "taskHref": "tasks/go-bugfix-l2-c2/task.md",
+            "testsHref": "tasks/go-bugfix-l2-c2/tests.sh",
+            "title": "Avoid restock on failed return ledger",
+            "type": "bugfix"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l2-c3",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-bugfix-l2-c3",
+            "interventions": 3,
+            "jsonHref": "tasks/go-bugfix-l2-c3/task.json",
+            "minutes": 40,
+            "scenario": "subscription activation (`subscriptions`)",
+            "scope": [
+                  "subscriptions/**",
+                  "account/**",
+                  "billing/**"
+            ],
+            "scopeMore": 1,
+            "summary": "held accounts return an error; no invoice is created; no entitlement is activated",
+            "taskHref": "tasks/go-bugfix-l2-c3/task.md",
+            "testsHref": "tasks/go-bugfix-l2-c3/tests.sh",
+            "title": "Block subscriptions for held accounts",
+            "type": "bugfix"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l3-c1",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-bugfix-l3-c1",
+            "interventions": 4,
+            "jsonHref": "tasks/go-bugfix-l3-c1/task.json",
+            "minutes": 55,
+            "scenario": "fulfillment saga (`fulfillment_saga`)",
+            "scope": [
+                  "fulfillment_saga/**",
+                  "docs/contexts/fulfillment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "carrier failure releases inventory; carrier failure voids payment authorization; fulfilled outbox event is not published",
+            "taskHref": "tasks/go-bugfix-l3-c1/task.md",
+            "testsHref": "tasks/go-bugfix-l3-c1/tests.sh",
+            "title": "Compensate fulfillment carrier failure",
+            "type": "bugfix"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l3-c2",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-bugfix-l3-c2",
+            "interventions": 4,
+            "jsonHref": "tasks/go-bugfix-l3-c2/task.json",
+            "minutes": 55,
+            "scenario": "payment saga (`payment_saga`)",
+            "scope": [
+                  "payment_saga/**",
+                  "docs/contexts/payment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "retry for same invoice does not capture again; ledger can be recorded on retry; errors still propagate",
+            "taskHref": "tasks/go-bugfix-l3-c2/task.md",
+            "testsHref": "tasks/go-bugfix-l3-c2/tests.sh",
+            "title": "Avoid duplicate capture after ledger failure",
+            "type": "bugfix"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-bugfix-l3-c3",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-bugfix-l3-c3",
+            "interventions": 4,
+            "jsonHref": "tasks/go-bugfix-l3-c3/task.json",
+            "minutes": 55,
+            "scenario": "settlement reconciliation (`settlement_reconciliation`)",
+            "scope": [
+                  "settlement_reconciliation/**"
+            ],
+            "scopeMore": 0,
+            "summary": "same-batch discrepancies notify once; different batches can still notify; matching results stay unchanged",
+            "taskHref": "tasks/go-bugfix-l3-c3/task.md",
+            "testsHref": "tasks/go-bugfix-l3-c3/tests.sh",
+            "title": "Make reconciliation notifications idempotent",
+            "type": "bugfix"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l1-c1",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-feature-l1-c1",
+            "interventions": 2,
+            "jsonHref": "tasks/go-feature-l1-c1/task.json",
+            "minutes": 25,
+            "scenario": "catalog (`catalog`)",
+            "scope": [
+                  "catalog/**",
+                  "docs/contexts/catalog.md"
+            ],
+            "scopeMore": 0,
+            "summary": "returns only active products with the tag; sorts results by SKU; does not mutate input",
+            "taskHref": "tasks/go-feature-l1-c1/task.md",
+            "testsHref": "tasks/go-feature-l1-c1/tests.sh",
+            "title": "Add available-product tag filtering",
+            "type": "feature"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l1-c2",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-feature-l1-c2",
+            "interventions": 2,
+            "jsonHref": "tasks/go-feature-l1-c2/task.json",
+            "minutes": 25,
+            "scenario": "tax rules (`taxrules`)",
+            "scope": [
+                  "taxrules/**",
+                  "docs/contexts/taxrules.md"
+            ],
+            "scopeMore": 0,
+            "summary": "food and medicine are exempt; matching is case-insensitive; unknown categories are taxable",
+            "taskHref": "tasks/go-feature-l1-c2/task.md",
+            "testsHref": "tasks/go-feature-l1-c2/tests.sh",
+            "title": "Add exempt category handling",
+            "type": "feature"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l1-c3",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-feature-l1-c3",
+            "interventions": 2,
+            "jsonHref": "tasks/go-feature-l1-c3/task.json",
+            "minutes": 25,
+            "scenario": "customer profile (`customerprofile`)",
+            "scope": [
+                  "customerprofile/**"
+            ],
+            "scopeMore": 0,
+            "summary": "uses FirstName + LastName first; falls back to Email when names are missing; empty profile returns anonymous",
+            "taskHref": "tasks/go-feature-l1-c3/task.md",
+            "testsHref": "tasks/go-feature-l1-c3/tests.sh",
+            "title": "Add customer display names",
+            "type": "feature"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l2-c1",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-feature-l2-c1",
+            "interventions": 3,
+            "jsonHref": "tasks/go-feature-l2-c1/task.json",
+            "minutes": 40,
+            "scenario": "checkout flow (`checkout`)",
+            "scope": [
+                  "checkout/**",
+                  "cart/**",
+                  "pricing/**"
+            ],
+            "scopeMore": 3,
+            "summary": "percent discount applies before tax; discounted amount participates in shipping threshold; inventory failures still fail",
+            "taskHref": "tasks/go-feature-l2-c1/task.md",
+            "testsHref": "tasks/go-feature-l2-c1/tests.sh",
+            "title": "Add discounted checkout quotes",
+            "type": "feature"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l2-c2",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-feature-l2-c2",
+            "interventions": 3,
+            "jsonHref": "tasks/go-feature-l2-c2/task.json",
+            "minutes": 40,
+            "scenario": "returns flow (`returns`)",
+            "scope": [
+                  "returns/**",
+                  "orders/**",
+                  "refunds/**"
+            ],
+            "scopeMore": 3,
+            "summary": "ineligible orders return a reason; eligible orders return expected refund; no ledger or inventory side effects",
+            "taskHref": "tasks/go-feature-l2-c2/task.md",
+            "testsHref": "tasks/go-feature-l2-c2/tests.sh",
+            "title": "Add return preview",
+            "type": "feature"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l2-c3",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-feature-l2-c3",
+            "interventions": 3,
+            "jsonHref": "tasks/go-feature-l2-c3/task.json",
+            "minutes": 40,
+            "scenario": "subscription activation (`subscriptions`)",
+            "scope": [
+                  "subscriptions/**",
+                  "account/**",
+                  "billing/**"
+            ],
+            "scopeMore": 1,
+            "summary": "requires active entitlement; returns prorated credit and next charge; held accounts cannot preview",
+            "taskHref": "tasks/go-feature-l2-c3/task.md",
+            "testsHref": "tasks/go-feature-l2-c3/tests.sh",
+            "title": "Add subscription plan-change preview",
+            "type": "feature"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l3-c1",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-feature-l3-c1",
+            "interventions": 4,
+            "jsonHref": "tasks/go-feature-l3-c1/task.json",
+            "minutes": 55,
+            "scenario": "fulfillment saga (`fulfillment_saga`)",
+            "scope": [
+                  "fulfillment_saga/**",
+                  "docs/contexts/fulfillment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "second call with same key does not repeat reserve/authorize/ship; first success still writes outbox; empty key errors",
+            "taskHref": "tasks/go-feature-l3-c1/task.md",
+            "testsHref": "tasks/go-feature-l3-c1/tests.sh",
+            "title": "Add fulfillment idempotency",
+            "type": "feature"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l3-c2",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-feature-l3-c2",
+            "interventions": 4,
+            "jsonHref": "tasks/go-feature-l3-c2/task.json",
+            "minutes": 55,
+            "scenario": "payment saga (`payment_saga`)",
+            "scope": [
+                  "payment_saga/**",
+                  "docs/contexts/payment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "calls gateway refund first; records ledger refund second; ledger failure returns error with refund ID retained",
+            "taskHref": "tasks/go-feature-l3-c2/task.md",
+            "testsHref": "tasks/go-feature-l3-c2/tests.sh",
+            "title": "Add payment refund saga",
+            "type": "feature"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-feature-l3-c3",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-feature-l3-c3",
+            "interventions": 4,
+            "jsonHref": "tasks/go-feature-l3-c3/task.json",
+            "minutes": 55,
+            "scenario": "settlement reconciliation (`settlement_reconciliation`)",
+            "scope": [
+                  "settlement_reconciliation/**"
+            ],
+            "scopeMore": 0,
+            "summary": "report includes missing payouts; report includes amount mismatches; report is sorted by external ID",
+            "taskHref": "tasks/go-feature-l3-c3/task.md",
+            "testsHref": "tasks/go-feature-l3-c3/tests.sh",
+            "title": "Add reconciliation discrepancy report",
+            "type": "feature"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l1-c1",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-refactor-l1-c1",
+            "interventions": 2,
+            "jsonHref": "tasks/go-refactor-l1-c1/task.json",
+            "minutes": 25,
+            "scenario": "catalog (`catalog`)",
+            "scope": [
+                  "catalog/**",
+                  "docs/contexts/catalog.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds normalizeSKU helper; ValidateProduct and FindAvailableByTag reuse it; public APIs stay unchanged",
+            "taskHref": "tasks/go-refactor-l1-c1/task.md",
+            "testsHref": "tasks/go-refactor-l1-c1/tests.sh",
+            "title": "Extract SKU normalization helper",
+            "type": "refactor"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l1-c2",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-refactor-l1-c2",
+            "interventions": 2,
+            "jsonHref": "tasks/go-refactor-l1-c2/task.json",
+            "minutes": 25,
+            "scenario": "tax rules (`taxrules`)",
+            "scope": [
+                  "taxrules/**",
+                  "docs/contexts/taxrules.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds BasisPointsDenominator; tax code uses the constant; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l1-c2/task.md",
+            "testsHref": "tasks/go-refactor-l1-c2/tests.sh",
+            "title": "Name the basis-points denominator",
+            "type": "refactor"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l1-c3",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-refactor-l1-c3",
+            "interventions": 2,
+            "jsonHref": "tasks/go-refactor-l1-c3/task.json",
+            "minutes": 25,
+            "scenario": "customer profile (`customerprofile`)",
+            "scope": [
+                  "customerprofile/**"
+            ],
+            "scopeMore": 0,
+            "summary": "adds validateProfileIdentity helper; Validate calls the helper; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l1-c3/task.md",
+            "testsHref": "tasks/go-refactor-l1-c3/tests.sh",
+            "title": "Extract profile validation helper",
+            "type": "refactor"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l2-c1",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-refactor-l2-c1",
+            "interventions": 3,
+            "jsonHref": "tasks/go-refactor-l2-c1/task.json",
+            "minutes": 40,
+            "scenario": "checkout flow (`checkout`)",
+            "scope": [
+                  "checkout/**",
+                  "cart/**",
+                  "pricing/**"
+            ],
+            "scopeMore": 3,
+            "summary": "adds validateInventoryForLines; BuildQuote calls it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l2-c1/task.md",
+            "testsHref": "tasks/go-refactor-l2-c1/tests.sh",
+            "title": "Extract checkout inventory validation",
+            "type": "refactor"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l2-c2",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-refactor-l2-c2",
+            "interventions": 3,
+            "jsonHref": "tasks/go-refactor-l2-c2/task.json",
+            "minutes": 40,
+            "scenario": "returns flow (`returns`)",
+            "scope": [
+                  "returns/**",
+                  "orders/**",
+                  "refunds/**"
+            ],
+            "scopeMore": 3,
+            "summary": "adds returnEligibilityReason; ProcessReturn and PreviewReturn reuse it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l2-c2/task.md",
+            "testsHref": "tasks/go-refactor-l2-c2/tests.sh",
+            "title": "Extract return eligibility decision",
+            "type": "refactor"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l2-c3",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-refactor-l2-c3",
+            "interventions": 3,
+            "jsonHref": "tasks/go-refactor-l2-c3/task.json",
+            "minutes": 40,
+            "scenario": "subscription activation (`subscriptions`)",
+            "scope": [
+                  "subscriptions/**",
+                  "account/**",
+                  "billing/**"
+            ],
+            "scopeMore": 1,
+            "summary": "adds activationDecision helper; Activate calls it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l2-c3/task.md",
+            "testsHref": "tasks/go-refactor-l2-c3/tests.sh",
+            "title": "Extract subscription activation decision",
+            "type": "refactor"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l3-c1",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-refactor-l3-c1",
+            "interventions": 4,
+            "jsonHref": "tasks/go-refactor-l3-c1/task.json",
+            "minutes": 55,
+            "scenario": "fulfillment saga (`fulfillment_saga`)",
+            "scope": [
+                  "fulfillment_saga/**",
+                  "docs/contexts/fulfillment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds compensateAuthorization helper; PlaceOrder uses it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l3-c1/task.md",
+            "testsHref": "tasks/go-refactor-l3-c1/tests.sh",
+            "title": "Extract fulfillment compensation",
+            "type": "refactor"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l3-c2",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-refactor-l3-c2",
+            "interventions": 4,
+            "jsonHref": "tasks/go-refactor-l3-c2/task.json",
+            "minutes": 55,
+            "scenario": "payment saga (`payment_saga`)",
+            "scope": [
+                  "payment_saga/**",
+                  "docs/contexts/payment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds shouldRetryPaymentError; SettleInvoice uses it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l3-c2/task.md",
+            "testsHref": "tasks/go-refactor-l3-c2/tests.sh",
+            "title": "Extract payment retry policy",
+            "type": "refactor"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-refactor-l3-c3",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-refactor-l3-c3",
+            "interventions": 4,
+            "jsonHref": "tasks/go-refactor-l3-c3/task.json",
+            "minutes": 55,
+            "scenario": "settlement reconciliation (`settlement_reconciliation`)",
+            "scope": [
+                  "settlement_reconciliation/**"
+            ],
+            "scopeMore": 0,
+            "summary": "adds matchPayoutsToLedger helper; Reconcile and BuildReport reuse it; behavior stays unchanged",
+            "taskHref": "tasks/go-refactor-l3-c3/task.md",
+            "testsHref": "tasks/go-refactor-l3-c3/tests.sh",
+            "title": "Extract reconciliation matching engine",
+            "type": "refactor"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-test-l1-c1",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-test-l1-c1",
+            "interventions": 2,
+            "jsonHref": "tasks/go-test-l1-c1/task.json",
+            "minutes": 25,
+            "scenario": "catalog (`catalog`)",
+            "scope": [
+                  "catalog/**",
+                  "docs/contexts/catalog.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestValidateProductRejectsNegativePrice; uses public catalog API only; does not require production changes",
+            "taskHref": "tasks/go-test-l1-c1/task.md",
+            "testsHref": "tasks/go-test-l1-c1/tests.sh",
+            "title": "Test catalog price boundaries",
+            "type": "test"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-test-l1-c2",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-test-l1-c2",
+            "interventions": 2,
+            "jsonHref": "tasks/go-test-l1-c2/task.json",
+            "minutes": 25,
+            "scenario": "tax rules (`taxrules`)",
+            "scope": [
+                  "taxrules/**",
+                  "docs/contexts/taxrules.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestValidateRuleRejectsRateAboveCap; covers 2501 basis points; does not change production behavior",
+            "taskHref": "tasks/go-test-l1-c2/task.md",
+            "testsHref": "tasks/go-test-l1-c2/tests.sh",
+            "title": "Test tax-rate cap",
+            "type": "test"
+      },
+      {
+            "b": "L1_standardized",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-test-l1-c3",
+            "contexts": 5,
+            "cost": 1.5,
+            "effort": "small",
+            "hidden": 2,
+            "id": "go-test-l1-c3",
+            "interventions": 2,
+            "jsonHref": "tasks/go-test-l1-c3/task.json",
+            "minutes": 25,
+            "scenario": "customer profile (`customerprofile`)",
+            "scope": [
+                  "customerprofile/**"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestCanSendMarketingRejectsDeletedProfiles; covers opted-in but deleted profiles; does not require production changes",
+            "taskHref": "tasks/go-test-l1-c3/task.md",
+            "testsHref": "tasks/go-test-l1-c3/tests.sh",
+            "title": "Test deleted profiles cannot receive marketing",
+            "type": "test"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-test-l2-c1",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-test-l2-c1",
+            "interventions": 3,
+            "jsonHref": "tasks/go-test-l2-c1/task.json",
+            "minutes": 40,
+            "scenario": "checkout flow (`checkout`)",
+            "scope": [
+                  "checkout/**",
+                  "cart/**",
+                  "pricing/**"
+            ],
+            "scopeMore": 3,
+            "summary": "adds TestBuildQuoteCombinesInventoryTaxAndShipping; asserts inventory/tax/shipping jointly affect output; does not require production changes",
+            "taskHref": "tasks/go-test-l2-c1/task.md",
+            "testsHref": "tasks/go-test-l2-c1/tests.sh",
+            "title": "Test checkout cross-domain quote",
+            "type": "test"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-test-l2-c2",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-test-l2-c2",
+            "interventions": 3,
+            "jsonHref": "tasks/go-test-l2-c2/task.json",
+            "minutes": 40,
+            "scenario": "returns flow (`returns`)",
+            "scope": [
+                  "returns/**",
+                  "orders/**",
+                  "refunds/**"
+            ],
+            "scopeMore": 3,
+            "summary": "adds TestProcessReturnRecordsLedgerAndRestocksOnSuccess; covers refund amount, inventory restock, and ledger entry; does not require production changes",
+            "taskHref": "tasks/go-test-l2-c2/task.md",
+            "testsHref": "tasks/go-test-l2-c2/tests.sh",
+            "title": "Test successful return side effects",
+            "type": "test"
+      },
+      {
+            "b": "L2_linked",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-test-l2-c3",
+            "contexts": 5,
+            "cost": 2.5,
+            "effort": "medium",
+            "hidden": 2,
+            "id": "go-test-l2-c3",
+            "interventions": 3,
+            "jsonHref": "tasks/go-test-l2-c3/task.json",
+            "minutes": 40,
+            "scenario": "subscription activation (`subscriptions`)",
+            "scope": [
+                  "subscriptions/**",
+                  "account/**",
+                  "billing/**"
+            ],
+            "scopeMore": 1,
+            "summary": "adds TestActivateCreatesInvoiceAndEntitlement; covers invoice creation and entitlement activation; does not require production changes",
+            "taskHref": "tasks/go-test-l2-c3/task.md",
+            "testsHref": "tasks/go-test-l2-c3/tests.sh",
+            "title": "Test successful subscription activation",
+            "type": "test"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C1_complete",
+            "cmd": "./scripts/run_eval_case.sh go-test-l3-c1",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-test-l3-c1",
+            "interventions": 4,
+            "jsonHref": "tasks/go-test-l3-c1/task.json",
+            "minutes": 55,
+            "scenario": "fulfillment saga (`fulfillment_saga`)",
+            "scope": [
+                  "fulfillment_saga/**",
+                  "docs/contexts/fulfillment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestPlaceOrderPublishesOutboxEvent; uses fake service clients; does not require production changes",
+            "taskHref": "tasks/go-test-l3-c1/task.md",
+            "testsHref": "tasks/go-test-l3-c1/tests.sh",
+            "title": "Test fulfillment outbox event",
+            "type": "test"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C2_partial",
+            "cmd": "./scripts/run_eval_case.sh go-test-l3-c2",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-test-l3-c2",
+            "interventions": 4,
+            "jsonHref": "tasks/go-test-l3-c2/task.json",
+            "minutes": 55,
+            "scenario": "payment saga (`payment_saga`)",
+            "scope": [
+                  "payment_saga/**",
+                  "docs/contexts/payment_saga.md"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestSettleInvoiceRetriesTransientGatewayError; uses fake gateway and fake ledger; does not require production changes",
+            "taskHref": "tasks/go-test-l3-c2/task.md",
+            "testsHref": "tasks/go-test-l3-c2/tests.sh",
+            "title": "Test payment transient retry",
+            "type": "test"
+      },
+      {
+            "b": "L3_complex",
+            "c": "C3_missing",
+            "cmd": "./scripts/run_eval_case.sh go-test-l3-c3",
+            "contexts": 5,
+            "cost": 4.0,
+            "effort": "large",
+            "hidden": 2,
+            "id": "go-test-l3-c3",
+            "interventions": 4,
+            "jsonHref": "tasks/go-test-l3-c3/task.json",
+            "minutes": 55,
+            "scenario": "settlement reconciliation (`settlement_reconciliation`)",
+            "scope": [
+                  "settlement_reconciliation/**"
+            ],
+            "scopeMore": 0,
+            "summary": "adds TestReconcileReturnsNotificationFailure; uses fake payout/ledger/notification clients; does not require production changes",
+            "taskHref": "tasks/go-test-l3-c3/task.md",
+            "testsHref": "tasks/go-test-l3-c3/tests.sh",
+            "title": "Test reconciliation notification failure",
+            "type": "test"
+      }
+];
+    const labels = {
+      "C1_complete": "C1 complete",
+      "C2_partial": "C2 partial",
+      "C3_missing": "C3 missing",
+      "L1_standardized": "L1 standardized",
+      "L2_linked": "L2 linked",
+      "L3_complex": "L3 complex",
+      "all": "All",
+      "bugfix": "Bugfix",
+      "feature": "Feature",
+      "large": "Large",
+      "medium": "Medium",
+      "refactor": "Refactor",
+      "small": "Small",
+      "test": "Test"
+};
+    const copy = {
+      "allComplexity": "All complexity",
+      "allEfforts": "All efforts",
+      "allTypes": "All types",
+      "budgetUnit": "minutes",
+      "contextSources": "{count} context sources",
+      "hiddenChecks": "{count} hidden checks",
+      "jsonLink": "JSON",
+      "metricBudget": "budget",
+      "metricCost": "max cost",
+      "metricInterventions": "interventions",
+      "morePaths": "+{count} paths",
+      "showing": "Showing {shown} of {total}",
+      "taskLink": "Task",
+      "testsLink": "Tests"
+};
+
+    const $ = (selector) => document.querySelector(selector);
+    const grid = $("#taskGrid");
+    const resultCount = $("#resultCount");
+    const emptyState = $("#emptyState");
+    const searchInput = $("#searchInput");
+    const typeFilter = $("#typeFilter");
+    const effortFilter = $("#effortFilter");
+    const complexityFilter = $("#complexityFilter");
+    const sortSelect = $("#sortSelect");
+
+    function uniqueBy(key) {
+      return [...new Set(TASKS.map((task) => task[key]))].sort();
+    }
+
+    function option(select, value, text) {
+      const node = document.createElement("option");
+      node.value = value;
+      node.textContent = text;
+      select.append(node);
+    }
+
+    function seedFilter(select, allLabel, values) {
+      option(select, "all", allLabel);
+      values.forEach((value) => option(select, value, labels[value] || value));
+    }
+
+    function median(values) {
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+    }
+
+    function setSummary() {
+      const budgets = TASKS.map((task) => task.minutes);
+      $("#taskTotal").textContent = TASKS.length;
+      $("#typeTotal").textContent = uniqueBy("type").length;
+      $("#matrixTotal").textContent = new Set(TASKS.map((task) => `${task.b}:${task.c}`)).size;
+      $("#medianBudget").textContent = `${median(budgets)}m`;
+      $("#budgetRange").textContent = budgets.length
+        ? `${Math.min(...budgets)}-${Math.max(...budgets)} ${copy.budgetUnit}`
+        : `0 ${copy.budgetUnit}`;
+    }
+
+    function searchable(task) {
+      return [
+        task.id,
+        task.title,
+        task.type,
+        task.effort,
+        task.b,
+        task.c,
+        task.scenario,
+        task.summary,
+        task.scope.join(" "),
+        task.cmd
+      ].join(" ").toLowerCase();
+    }
+
+    function matches(task) {
+      const query = searchInput.value.trim().toLowerCase();
+      const type = typeFilter.value;
+      const effort = effortFilter.value;
+      const complexity = complexityFilter.value;
+      return (!query || searchable(task).includes(query))
+        && (type === "all" || task.type === type)
+        && (effort === "all" || task.effort === effort)
+        && (complexity === "all" || task.b === complexity || task.c === complexity);
+    }
+
+    function sorted(tasks) {
+      const sort = sortSelect.value;
+      return [...tasks].sort((a, b) => {
+        if (sort === "time") {
+          return a.minutes - b.minutes || a.id.localeCompare(b.id);
+        }
+        if (sort === "cost") {
+          return a.cost - b.cost || a.id.localeCompare(b.id);
+        }
+        if (sort === "type") {
+          return a.type.localeCompare(b.type) || a.id.localeCompare(b.id);
+        }
+        return a.id.localeCompare(b.id);
+      });
+    }
+
+    function format(template, count) {
+      return template.replace("{count}", count);
+    }
+
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) {
+        node.className = className;
+      }
+      if (text !== undefined) {
+        node.textContent = text;
+      }
+      return node;
+    }
+
+    function link(text, href) {
+      const node = el("a", "card-action", text);
+      node.href = href;
+      return node;
+    }
+
+    function renderTask(task) {
+      const card = el("article", "task-card");
+      const top = el("div", "card-top");
+      top.append(el("div", "task-id", task.id), el("span", `pill ${task.type}`, labels[task.type]));
+
+      const body = el("div", "card-body");
+      body.append(el("h3", "task-title", task.title));
+      body.append(el("div", "scenario", `${task.scenario} / ${labels[task.b]} / ${labels[task.c]}`));
+      body.append(el("p", "summary", task.summary));
+
+      const metrics = el("div", "metric-row");
+      [
+        [`${task.minutes}m`, copy.metricBudget],
+        [`$${task.cost.toFixed(1)}`, copy.metricCost],
+        [`${task.interventions}`, copy.metricInterventions]
+      ].forEach(([value, label]) => {
+        const metric = el("div", "metric");
+        metric.append(el("b", "", value), el("span", "", label));
+        metrics.append(metric);
+      });
+      body.append(metrics);
+
+      const chips = el("div", "chips");
+      [
+        labels[task.effort],
+        format(copy.hiddenChecks, task.hidden),
+        format(copy.contextSources, task.contexts),
+        ...task.scope,
+        task.scopeMore ? format(copy.morePaths, task.scopeMore) : null
+      ].filter(Boolean).forEach((text) => chips.append(el("span", "chip", text)));
+      body.append(chips);
+
+      body.append(el("code", "command", task.cmd));
+
+      const actions = el("div", "card-actions");
+      actions.append(
+        link(copy.taskLink, task.taskHref),
+        link(copy.jsonLink, task.jsonHref),
+        link(copy.testsLink, task.testsHref)
+      );
+      body.append(actions);
+
+      card.append(top, body);
+      return card;
+    }
+
+    function showingText(shown) {
+      return copy.showing.replace("{shown}", shown).replace("{total}", TASKS.length);
+    }
+
+    function render() {
+      const tasks = sorted(TASKS.filter(matches));
+      grid.replaceChildren(...tasks.map(renderTask));
+      resultCount.textContent = showingText(tasks.length);
+      emptyState.style.display = tasks.length ? "none" : "block";
+    }
+
+    setSummary();
+    seedFilter(typeFilter, copy.allTypes, uniqueBy("type"));
+    seedFilter(effortFilter, copy.allEfforts, uniqueBy("effort"));
+    seedFilter(complexityFilter, copy.allComplexity, [...uniqueBy("b"), ...uniqueBy("c")]);
+    [searchInput, typeFilter, effortFilter, complexityFilter, sortSelect].forEach((input) => {
+      input.addEventListener("input", render);
+      input.addEventListener("change", render);
+    });
+    render();
+
+  </script>
+</body>
+</html>
