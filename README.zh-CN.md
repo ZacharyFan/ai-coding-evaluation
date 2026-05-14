@@ -180,9 +180,12 @@ python -m scripts.eval llm-review
 ```bash
 python -m scripts.eval report
 python -m scripts.eval dashboard
+python -m scripts.eval registry
 ```
 
 `report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
+
+`benchmark_registry.py` 会生成双语任务索引：`benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`。它是 `benchmarks/tasks/` 下可执行任务的语言无关目录，只展示任务 metadata 和入口，不展示 run 结果。
 
 <details>
 <summary><strong>可选：</strong>生成链路指标</summary>
@@ -210,6 +213,7 @@ python -m scripts.score_run --task benchmarks/tasks/<task-id>/task.json --run ru
 python -m scripts.llm_review_run --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
 python -m scripts.report --runs runs
 python -m scripts.dashboard --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
+python -m scripts.benchmark_registry --tasks benchmarks/tasks --output benchmarks/index.html
 ```
 
 完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
@@ -257,6 +261,7 @@ PR 流程见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。如何写好用例
 
 ```bash
 python -m scripts.validate_task
+python -m scripts.eval registry
 ruff check scripts tests
 ruff format --check scripts tests
 python -m pytest
@@ -268,6 +273,7 @@ python -m pytest
 
 ```text
 benchmarks/tasks/       参与运行和报告统计的真实 benchmark 任务
+benchmarks/index.html   生成的双语任务索引入口
 benchmarks/local/       私有本地实验任务，git 默认忽略
 benchmarks/templates/   可复制的用例编写模板，默认不运行
 runs/                   本地运行证据和 target worktree，git 默认忽略

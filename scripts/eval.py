@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from scripts import benchmark_registry as registry_module
 from scripts import dashboard as dashboard_module
 from scripts import llm_review_run as llm_review_module
 from scripts import report as report_module
@@ -321,6 +322,15 @@ def write_dashboard(
     return [output_path, zh_path]
 
 
+def write_benchmark_registry(
+    root: Path, tasks: Path, output: Path, zh_output: Path | None = None
+) -> list[Path]:
+    tasks_root = resolve_repo_path(root, tasks)
+    output_path = resolve_repo_path(root, output)
+    zh_path = resolve_repo_path(root, zh_output) if zh_output else None
+    return registry_module.write_registry(tasks_root, output_path, zh_path)
+
+
 def add_run_dir_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--run-dir",
@@ -470,6 +480,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     dashboard.add_argument("--output", type=Path, default=Path("reports/dashboard.html"))
     dashboard.add_argument("--zh-output", type=Path, default=None)
 
+    registry = subparsers.add_parser("registry", help="Generate static benchmark task registry")
+    registry.add_argument("--tasks", type=Path, default=Path("benchmarks/tasks"))
+    registry.add_argument("--output", type=Path, default=Path("benchmarks/index.html"))
+    registry.add_argument("--zh-output", type=Path, default=None)
+
     return parser.parse_args(argv)
 
 
@@ -549,6 +564,10 @@ def main(argv: list[str] | None = None) -> None:
             return
         if args.command == "dashboard":
             for path in write_dashboard(root, args.runs, args.tasks, args.output, args.zh_output):
+                print(path)
+            return
+        if args.command == "registry":
+            for path in write_benchmark_registry(root, args.tasks, args.output, args.zh_output):
                 print(path)
             return
         raise ValueError(f"unsupported command: {args.command}")
