@@ -59,6 +59,19 @@ dashboard = read-only comparison projection
 
 After adding a public reproducible task under `benchmarks/tasks/`, use the shortcut CLI for the shortest scored loop.
 
+<details>
+<summary><strong>Optional:</strong> browse available tasks before starting a run</summary>
+
+Generate the bilingual task registry when you want to choose or inspect benchmark tasks before `prepare_run`:
+
+```bash
+python -m scripts.eval registry
+```
+
+`benchmark_registry.py` writes `benchmarks/index.html` and `benchmarks/index.zh-CN.html`. It is a language-agnostic catalog of executable tasks under `benchmarks/tasks/`; it describes task metadata and entrypoints, not run results.
+
+</details>
+
 1. Prepare a run:
 
 ```bash
@@ -180,12 +193,9 @@ For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepsee
 ```bash
 python -m scripts.eval report
 python -m scripts.eval dashboard
-python -m scripts.eval registry
 ```
 
 `report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
-
-`benchmark_registry.py` generates the bilingual task registry at `benchmarks/index.html` and `benchmarks/index.zh-CN.html`. It is a language-agnostic catalog of executable tasks under `benchmarks/tasks/`; it describes task metadata and entrypoints, not run results.
 
 <details>
 <summary><strong>Optional:</strong> generate context link metrics</summary>
