@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import shlex
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,9 @@ from scripts.prepare_run import prepare_run
 from scripts.show_solution_diff import show_solution_diff
 
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
+DEMO_WORKFLOW_ID = "demo"
+DEMO_TASK_ID = "go-bugfix-l1-c1"
+DEMO_RUN_ID = "example"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -31,6 +36,16 @@ def load_json(path: Path) -> dict[str, Any]:
 def write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def check(
+    name: str,
+    status: str,
+    detail: str,
+    *,
+    required: bool,
+) -> dict[str, Any]:
+    return {"name": name, "status": status, "detail": detail, "required": required}
 
 
 def current_path(root: Path) -> Path:
@@ -133,6 +148,180 @@ def write_current(root: Path, run_dir: Path) -> dict[str, Any]:
     metadata = current_metadata(root, run_dir)
     write_json(current_path(root), metadata)
     return metadata
+
+
+def task_count(root: Path) -> int:
+    return len(list((root / "benchmarks" / "tasks").glob("*/task.json")))
+
+
+def module_or_tool_available(name: str) -> bool:
+    return shutil.which(name) is not None or importlib.util.find_spec(name) is not None
+
+
+def writable_directory_check(path: Path) -> tuple[bool, str]:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".ai-eval-doctor.tmp"
+        probe.write_text("ok\n", encoding="utf-8")
+        probe.unlink()
+    except OSError as error:
+        return False, str(error)
+    return True, str(path)
+
+
+def doctor(root: Path) -> dict[str, Any]:
+    checks: list[dict[str, Any]] = []
+    version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    checks.append(
+        check(
+            "python",
+            "ok" if sys.version_info >= (3, 11) else "fail",
+            f"Python {version}; requires >=3.11",
+            required=True,
+        )
+    )
+
+    git = shutil.which("git")
+    checks.append(
+        check(
+            "git",
+            "ok" if git else "fail",
+            git or "git executable not found on PATH",
+            required=True,
+        )
+    )
+
+    required_paths = [
+        "README.md",
+        "pyproject.toml",
+        "scripts/eval.py",
+        "benchmarks/tasks",
+        f"examples/{DEMO_TASK_ID}/run/run.json",
+        f"examples/{DEMO_TASK_ID}/run/score.json",
+    ]
+    missing = [path for path in required_paths if not (root / path).exists()]
+    checks.append(
+        check(
+            "repo structure",
+            "fail" if missing else "ok",
+            "missing: " + ", ".join(missing) if missing else str(root),
+            required=True,
+        )
+    )
+
+    count = task_count(root)
+    checks.append(
+        check(
+            "benchmark tasks",
+            "ok" if count > 0 else "fail",
+            f"{count} task(s) under benchmarks/tasks",
+            required=True,
+        )
+    )
+
+    for directory in ("runs", "reports"):
+        writable, detail = writable_directory_check(root / directory)
+        checks.append(
+            check(
+                f"{directory} writable",
+                "ok" if writable else "fail",
+                detail,
+                required=True,
+            )
+        )
+
+    go = shutil.which("go")
+    checks.append(
+        check(
+            "go",
+            "ok" if go else "warn",
+            go or "go executable not found; required only for live Go benchmark runs",
+            required=False,
+        )
+    )
+    for tool in ("pytest", "ruff"):
+        checks.append(
+            check(
+                tool,
+                "ok" if module_or_tool_available(tool) else "warn",
+                "available"
+                if module_or_tool_available(tool)
+                else f"{tool} not found; install .[dev]",
+                required=False,
+            )
+        )
+
+    return {
+        "ok": all(item["status"] != "fail" for item in checks if item["required"]),
+        "checks": checks,
+    }
+
+
+def format_doctor(result: dict[str, Any]) -> str:
+    labels = {"ok": "OK ", "warn": "WARN", "fail": "FAIL"}
+    lines = ["AI Eval doctor"]
+    for item in result["checks"]:
+        lines.append(f"{labels[item['status']]} {item['name']}: {item['detail']}")
+    lines.append("")
+    lines.append("Ready." if result["ok"] else "Required checks failed.")
+    return "\n".join(lines) + "\n"
+
+
+def demo_source_dir(root: Path) -> Path:
+    return root / "examples" / DEMO_TASK_ID / "run"
+
+
+def demo_run_dir(root: Path) -> Path:
+    return root / "runs" / DEMO_WORKFLOW_ID / DEMO_TASK_ID / DEMO_RUN_ID
+
+
+def normalize_demo_run(root: Path, run_dir: Path) -> None:
+    run_path = run_dir / "run.json"
+    score_path = run_dir / "score.json"
+    run = load_json(run_path)
+    run["workflow_id"] = DEMO_WORKFLOW_ID
+    run["task_id"] = DEMO_TASK_ID
+    target = run.setdefault("target", {})
+    if isinstance(target, dict):
+        target["worktree"] = path_for_display(root, run_dir / "target")
+    event_collection = run.get("event_collection")
+    if isinstance(event_collection, dict):
+        event_collection["events_path"] = path_for_display(root, run_dir / "events.jsonl")
+    write_json(run_path, run)
+
+    score = load_json(score_path)
+    score["workflow_id"] = DEMO_WORKFLOW_ID
+    score["task_id"] = DEMO_TASK_ID
+    write_json(score_path, score)
+
+
+def create_demo_run(root: Path, *, reset: bool = False) -> dict[str, Any]:
+    source = demo_source_dir(root)
+    if not source.exists():
+        raise FileNotFoundError(f"demo source run not found: {source}")
+    run_dir = demo_run_dir(root)
+    if run_dir.exists():
+        if not reset:
+            return {"created": False, "run_dir": run_dir}
+        shutil.rmtree(run_dir)
+    run_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, run_dir)
+    normalize_demo_run(root, run_dir)
+    return {"created": True, "run_dir": run_dir}
+
+
+def format_demo_result(root: Path, result: dict[str, Any]) -> str:
+    run_dir = path_for_display(root, result["run_dir"])
+    action = "Created demo run" if result["created"] else "Demo run already exists"
+    return (
+        f"{action}: {run_dir}\n\n"
+        "Next:\n"
+        "python -m scripts.eval report --runs runs\n"
+        "python -m scripts.eval dashboard --runs runs --tasks benchmarks/tasks\n\n"
+        "After editable install, the same commands are:\n"
+        "ai-eval report --runs runs\n"
+        "ai-eval dashboard --runs runs --tasks benchmarks/tasks\n"
+    )
 
 
 def start_run(
@@ -352,6 +541,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    subparsers.add_parser("doctor", help="Check local setup for the evaluation repo")
+
+    demo = subparsers.add_parser("demo", help="Copy the built-in scored demo run into runs/")
+    demo.add_argument(
+        "--reset",
+        action="store_true",
+        help="Recreate runs/demo/go-bugfix-l1-c1/example if it already exists.",
+    )
+
     start = subparsers.add_parser("start", help="Prepare a run and set runs/.current.json")
     start.add_argument(
         "--workflow", required=True, help="Workflow group id, such as baseline, plan-first, or tdd"
@@ -492,6 +690,16 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     root = resolve_root(args.repo)
     try:
+        if args.command == "doctor":
+            result = doctor(root)
+            print(format_doctor(result), end="")
+            if not result["ok"]:
+                raise SystemExit(1)
+            return
+        if args.command == "demo":
+            result = create_demo_run(root, reset=args.reset)
+            print(format_demo_result(root, result), end="")
+            return
         if args.command == "start":
             result = start_run(root, args.workflow, args.task, run_id=args.run_id, model=args.model)
             print(json.dumps(result, indent=2, sort_keys=True))

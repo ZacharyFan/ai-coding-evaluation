@@ -4,6 +4,19 @@
 
 这个项目需要的是可复跑的工程任务，不是“听起来像真实需求”的提示词。
 
+## 本地设置
+
+从 checkout 安装 editable CLI 和开发工具：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+ai-eval doctor
+```
+
+如果不安装包，请在仓库根目录用 `python -m scripts.eval ...` 运行 CLI 命令。
+
 ## 贡献路径
 
 1. 复制最接近的任务类型模板：
@@ -18,6 +31,7 @@
 
    ```bash
    python -m scripts.validate_task benchmarks/tasks/<task-id>
+   python -m scripts.eval registry
    ruff check scripts tests
    ruff format --check scripts tests
    python -m pytest
@@ -98,6 +112,7 @@ context_maturity
 开 PR 前确认：
 
 - `python -m scripts.validate_task benchmarks/tasks/<task-id>` 通过
+- `python -m scripts.eval registry` 已刷新 `benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`
 - `ruff check scripts tests` 通过
 - `ruff format --check scripts tests` 通过
 - `python -m pytest` 通过

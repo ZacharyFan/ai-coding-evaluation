@@ -18,6 +18,25 @@
 accepted change / human attention minute
 ```
 
+## 为什么不是模型排行榜？
+
+模型排行榜回答的是“哪个模型在固定测试上分更高”。这个项目回答的是更接近工程现场的问题：
+
+```text
+在我的真实任务分布上，哪个 workflow 能用最少的人类注意力产出可接受代码？
+```
+
+这个 benchmark 会把质量证据、过程证据和交付证据分开。更强的模型也可能输：如果 workflow 需要持续人工纠偏、跳过项目上下文，或者产出的改动无法通过 review，它就不便宜。
+
+## 仓库里有什么
+
+- `benchmarks/tasks/` 下 36 个可执行 Go benchmark 任务
+- `benchmarks/templates/` 下可复制的任务模板
+- `examples/go-bugfix-l1-c1/` 下一个已评分的端到端 demo
+- `scripts/` 下零运行时依赖的 Python CLI helper
+- `integrations/` 下可选 Codex 和 Claude Code hook 模板
+- 中英文文档、schema、报告和 dashboard 生成器
+
 ## 它如何工作
 
 每个 benchmark task 会定义：
@@ -55,93 +74,121 @@ score     = 这次 run 的 review 结果
 dashboard = 只读的对比投影
 ```
 
+## 安装
+
+CLI 和 demo 的基础要求：
+
+```text
+Python 3.11+
+Git
+```
+
+从 checkout 安装：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+ai-eval doctor
+```
+
+所有 `ai-eval ...` 命令也可以在仓库根目录写成 `python -m scripts.eval ...`。`bin/ai-eval` 继续保留，适合需要绝对 repo helper 的 shell 流程。
+
 ## 快速开始
 
-先在 `benchmarks/tasks/` 下添加一个公开可复跑任务，然后用快捷 CLI 走最短评分闭环。
+### 2 分钟 demo
+
+这条路径不需要 API key，也不需要真实 AI coding session。它会把已提交的评分样例复制到本地 ignored `runs/` 证据目录，然后生成正常的 report 和 dashboard。
+
+```bash
+ai-eval demo
+ai-eval report --runs runs
+ai-eval dashboard --runs runs --tasks benchmarks/tasks
+```
+
+打开 `reports/dashboard.html` 或 `reports/dashboard.zh-CN.html` 查看可视化看板。Demo 是幂等的；用 `ai-eval demo --reset` 重建 `runs/demo/go-bugfix-l1-c1/example`。
+
+### 10 分钟真实 run
+
+要求：Git、Python 3.11+、Go。
+
+```bash
+ai-eval start --workflow baseline --task go-bugfix-l1-c1 --model <model>
+eval "$(ai-eval env)"
+cd "$AI_EVAL_TARGET_WORKTREE"
+```
+
+在 target worktree 中运行你的 AI 或人工 workflow。Coding prompt 使用复制到 run 目录下的 `task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续留在 benchmark task 目录中，只供 review 阶段使用。
+
+Coding 完成后：
+
+```bash
+ai-eval collect
+ai-eval score \
+  --set-review \
+    correctness=1.0 \
+    regression_safety=1.0 \
+    maintainability=0.8 \
+    test_quality=0.8 \
+    security=1.0 \
+    process_compliance=0.6
+ai-eval report --runs runs
+ai-eval dashboard --runs runs --tasks benchmarks/tasks
+```
+
+### 贡献一个任务
+
+```bash
+cp -R benchmarks/templates/bugfix benchmarks/tasks/bugfix-002
+python -m scripts.validate_task benchmarks/tasks/bugfix-002
+ai-eval registry
+ruff check scripts tests
+ruff format --check scripts tests
+python -m pytest
+```
+
+PR 流程见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。如何写好用例见 [docs/task-authoring.zh-CN.md](docs/task-authoring.zh-CN.md)。
+
+## 高级证据
+
+这些可选证据路径用于更深入的过程、review 或对比分析，不再压到 Quick Start 默认阅读流里。
 
 <details>
 <summary><strong>可选：</strong>启动 run 前浏览可用任务</summary>
 
-当你想在 `prepare_run` 前选择或查看 benchmark 任务时，生成双语任务索引：
+想在选择 run 前浏览任务 metadata，可以生成双语任务索引：
 
 ```bash
-python -m scripts.eval registry
+ai-eval registry
 ```
 
 `benchmark_registry.py` 会写入 `benchmarks/index.html` 和 `benchmarks/index.zh-CN.html`。它是 `benchmarks/tasks/` 下可执行任务的语言无关目录，只展示任务 metadata 和入口，不展示 run 结果。
 
 </details>
 
-1. 准备一次 run：
-
-```bash
-python -m scripts.eval start --workflow <workflow> --task <task-id> [--model <model>]
-```
-
 <details>
 <summary><strong>可选：</strong>采集 hook 过程证据</summary>
 
-启动 Claude Code 或 Codex 前，先导出当前 run 环境：
+Hook 证据会增强 `process_evidence` 和上下文链路指标。启动 Claude Code 或 Codex 前：
 
 ```bash
-eval "$(python -m scripts.eval env)"
-python -m scripts.eval hooks
+eval "$(ai-eval env)"
+ai-eval hooks
 ```
 
-安装脚本会把 run-scoped Codex 和 Claude Code hook 文件写入当前 target worktree，并加入该 worktree 的本地 git exclude。
+如果已有未被 git 跟踪的 hook 文件，使用 `ai-eval hooks --merge`。已被 target repo 跟踪的 hook 文件永远不会被修改。
 
-如果未被 git 跟踪的 hook 文件已经存在，使用：
-
-```bash
-python -m scripts.eval hooks --merge
-```
-
-它会追加评估 recorder hook，并避免重复命令。已被 target repo 跟踪的 hook 文件永远不会被修改。
-
-agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。如果你不在 evaluation 仓库根目录，先执行：
-
-```bash
-eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
-```
-
-然后回到 evaluation 仓库执行 `python -m scripts.eval hooks`。
-
-Hooks 会增强 `process_evidence` 和链路指标，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
+agent 必须从同一个 shell 启动，才能继承 `AI_EVAL_*`。Hooks 会增强证据，但不影响完成一次基础评分闭环。详见 [docs/hooks.zh-CN.md](docs/hooks.zh-CN.md)。
 
 </details>
-
-然后进入 target worktree：
-
-```bash
-cd "$AI_EVAL_TARGET_WORKTREE"
-```
-
-AI 或人工 workflow 修改准备好的 target worktree。Coding prompt 使用复制到 run 目录下的 `task.md`；如果偏好中文，使用 `task.zh-CN.md`。`acceptance.md` 继续只留在 benchmark task 目录中，供 review 阶段使用。
-
-2. coding 完成后，采集测试和 diff 证据：
-
-```bash
-python -m scripts.eval collect
-```
 
 <details>
 <summary><strong>可选：</strong>计算采纳率指标</summary>
 
-如果要计算行级采纳率，让 AI workflow 或 reviewer 先把 candidate 结果提交成 commit，再把这个 candidate commit 与最终采纳 commit 对比。这个指标只用于链路诊断，不影响 `score.json`。
+如果要计算行级采纳率，让 workflow 或 reviewer 先把 candidate 结果提交成 commit，再把这个 candidate commit 与最终采纳 commit 对比：
 
 ```bash
-cd runs/<workflow>/<task-id>/<run-id>/target
-git add .
-git commit -m "candidate for <task-id>"
-git rev-parse HEAD
-```
-
-最终采纳版本也形成 commit 后：
-
-```bash
-python -m scripts.eval adoption \
-  --candidate-ref <candidate-sha> \
-  --accepted-ref <accepted-sha>
+ai-eval adoption --candidate-ref <candidate-sha> --accepted-ref <accepted-sha>
 ```
 
 `candidate_ref` 是 AI candidate commit。`accepted_ref` 是最终采纳 commit。`target.solution_ref` 仍然只是参考解，不作为默认采纳来源。
@@ -151,51 +198,30 @@ python -m scripts.eval adoption \
 <details>
 <summary><strong>可选：</strong>查看参考解 diff</summary>
 
-如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff。这个 helper 会在存在 `task.scope.allowed_paths` 时只展示任务允许范围内的差异，输出带文件标题和行号的 reviewer-friendly diff view，并用红色背景标记候选侧行、绿色背景标记参考侧行。
+如果任务配置了 `target.solution_ref`，可以在打分前查看候选 worktree 与参考实现之间的 diff：
 
 ```bash
-python -m scripts.eval solution-diff --color auto
+ai-eval solution-diff --color auto
 ```
 
 它只给 reviewer 提供上下文，不能按“和参考解相似度”打分。
 
 </details>
 
-3. 正式计算分数前，先选择一种 review 路径。
+<details>
+<summary><strong>可选：</strong>使用 LLM review</summary>
 
-人工路径，首次运行推荐使用：直接传入六个 review 分数。这会创建或更新 `score.json`，并一次性计算最终分。每个 review 值必须在 `0.0` 到 `1.0` 之间。除非 reviewer 明确要压分，否则不要传 `--manual-hard-gate`：
-
-```bash
-python -m scripts.eval score \
-  --set-review \
-    correctness=1.0 \
-    regression_safety=1.0 \
-    maintainability=0.8 \
-    test_quality=0.8 \
-    security=1.0 \
-    process_compliance=0.6
-```
-
-如果需要人工 hard gate，追加 `--manual-hard-gate public_api_break`。`python -m scripts.eval score --init` 仍然保留给偏好手动编辑 draft JSON 的 reviewer。
-
-LLM review 路径：用 OpenAI-compatible reviewer 自动生成 `score.json` 并一次性计算最终分：
+LLM review 可以用 OpenAI-compatible reviewer 自动生成 `score.json`：
 
 ```bash
 AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
-python -m scripts.eval llm-review
+ai-eval llm-review
 ```
 
 如果使用 DeepSeek-compatible review，把 `AI_EVAL_REVIEW_BASE_URL` 设为 `https://api.deepseek.com`，并传入 `--api-key-env DEEPSEEK_API_KEY`。
 
-4. 生成报告或看板：
-
-```bash
-python -m scripts.eval report
-python -m scripts.eval dashboard
-```
-
-`report.py` 是快速终端/Markdown 报告。`dashboard.py` 是只读可视化对比看板，用来比较 workflow、model、同任务结果和链路指标。它会同时写入 `reports/dashboard.html` 和 `reports/dashboard.zh-CN.html`，不会修改 `run.json`、`score.json` 或 review 结果。
+</details>
 
 <details>
 <summary><strong>可选：</strong>生成链路指标</summary>
@@ -216,6 +242,9 @@ python -m scripts.context_metrics --runs runs --output reports/context-metrics.j
 
 快捷 CLI 只是稳定原语上的薄封装。调试、CI 或不想使用 `runs/.current.json` 时，可以直接运行底层命令：
 
+<details>
+<summary>展开底层原语命令</summary>
+
 ```bash
 python -m scripts.prepare_run --workflow <workflow> --task <task-id> [--model <model>]
 python -m scripts.collect_run --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
@@ -225,6 +254,8 @@ python -m scripts.report --runs runs
 python -m scripts.dashboard --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
 python -m scripts.benchmark_registry --tasks benchmarks/tasks --output benchmarks/index.html
 ```
+
+</details>
 
 完整端到端样例见 [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1)。
 
@@ -325,7 +356,7 @@ hidden_tests_failed      最高 70
 
 ## 任务类型模板
 
-当前仓库提供的是任务类型模板，不是真实 benchmark 任务：
+当前仓库同时提供可执行 Go benchmark 任务和任务类型模板：
 
 ```text
 bugfix      修复一个真实缺陷
