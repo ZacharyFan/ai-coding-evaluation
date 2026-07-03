@@ -1,4 +1,4 @@
-name: Python Lint
+name: Python CI
 
 on:
   pull_request:
@@ -7,16 +7,24 @@ on:
       - main
 
 jobs:
-  python-lint:
+  python-ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install Ruff
-        run: python -m pip install ruff==0.15.10
+      - name: Install package and dev tools
+        run: python -m pip install -e ".[dev]"
       - name: Ruff check
         run: ruff check scripts tests
       - name: Ruff format
         run: ruff format --check scripts tests
+      - name: Validate benchmark tasks
+        run: python -m scripts.validate_task benchmarks/tasks
+      - name: Refresh task registry
+        run: python -m scripts.eval registry
+      - name: Check generated registry is committed
+        run: git diff --exit-code -- benchmarks/index.html benchmarks/index.zh-CN.html
+      - name: Pytest
+        run: python -m pytest

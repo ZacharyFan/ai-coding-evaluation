@@ -4,6 +4,19 @@
 
 This project needs repeatable engineering tasks, not prompts that merely sound realistic.
 
+## Local Setup
+
+Install the editable CLI and development tools from a checkout:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+ai-eval doctor
+```
+
+If you do not install the package, run CLI commands from the repository root as `python -m scripts.eval ...`.
+
 ## Contribution Path
 
 1. Copy the closest task-type template:
@@ -18,6 +31,7 @@ This project needs repeatable engineering tasks, not prompts that merely sound r
 
    ```bash
    python -m scripts.validate_task benchmarks/tasks/<task-id>
+   python -m scripts.eval registry
    ruff check scripts tests
    ruff format --check scripts tests
    python -m pytest
@@ -98,6 +112,7 @@ A good public task has:
 Before opening a PR:
 
 - `python -m scripts.validate_task benchmarks/tasks/<task-id>` passes
+- `python -m scripts.eval registry` has refreshed `benchmarks/index.html` and `benchmarks/index.zh-CN.html`
 - `ruff check scripts tests` passes
 - `ruff format --check scripts tests` passes
 - `python -m pytest` passes

@@ -18,6 +18,25 @@ The primary unit is:
 accepted change / human attention minute
 ```
 
+## Why Not A Model Leaderboard?
+
+Model leaderboards answer "which model scored higher on a fixed test?" This project answers a messier engineering question:
+
+```text
+Which workflow produces acceptable changes with the least human attention on my task distribution?
+```
+
+The benchmark keeps quality evidence, process evidence, and delivery evidence separate. A stronger model can still lose if the workflow needs constant steering, skips project context, or produces changes that do not survive review.
+
+## What Ships In This Repo
+
+- 36 executable Go benchmark tasks under `benchmarks/tasks/`
+- Copyable task templates under `benchmarks/templates/`
+- A scored end-to-end demo under `examples/go-bugfix-l1-c1/`
+- Zero-runtime-dependency Python CLI helpers in `scripts/`
+- Optional Codex and Claude Code hook templates under `integrations/`
+- English and Chinese docs, schemas, reports, and dashboard generation
+
 ## How It Works
 
 Each benchmark task defines:
@@ -55,93 +74,121 @@ score     = review result for that run
 dashboard = read-only comparison projection
 ```
 
+## Install
+
+Requirements for the CLI and demo:
+
+```text
+Python 3.11+
+Git
+```
+
+Install from a checkout:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+ai-eval doctor
+```
+
+Every `ai-eval ...` command can also be run as `python -m scripts.eval ...` from the repository root. `bin/ai-eval` remains available for shell workflows that need an absolute repo helper.
+
 ## Quick Start
 
-After adding a public reproducible task under `benchmarks/tasks/`, use the shortcut CLI for the shortest scored loop.
+### 2-Minute Demo
+
+This path needs no API key and no live AI coding session. It copies the committed scored example into ignored local `runs/` evidence, then renders the normal report and dashboard.
+
+```bash
+ai-eval demo
+ai-eval report --runs runs
+ai-eval dashboard --runs runs --tasks benchmarks/tasks
+```
+
+Open `reports/dashboard.html` or `reports/dashboard.zh-CN.html` to inspect the visual board. The demo is idempotent; use `ai-eval demo --reset` to rebuild `runs/demo/go-bugfix-l1-c1/example`.
+
+### 10-Minute Live Run
+
+Requirements: Git, Python 3.11+, and Go.
+
+```bash
+ai-eval start --workflow baseline --task go-bugfix-l1-c1 --model <model>
+eval "$(ai-eval env)"
+cd "$AI_EVAL_TARGET_WORKTREE"
+```
+
+Run your AI or human workflow in the target worktree. Use the `task.md` copied into the run directory as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays reviewer-only in the benchmark task directory.
+
+After coding finishes:
+
+```bash
+ai-eval collect
+ai-eval score \
+  --set-review \
+    correctness=1.0 \
+    regression_safety=1.0 \
+    maintainability=0.8 \
+    test_quality=0.8 \
+    security=1.0 \
+    process_compliance=0.6
+ai-eval report --runs runs
+ai-eval dashboard --runs runs --tasks benchmarks/tasks
+```
+
+### Contribute A Task
+
+```bash
+cp -R benchmarks/templates/bugfix benchmarks/tasks/bugfix-002
+python -m scripts.validate_task benchmarks/tasks/bugfix-002
+ai-eval registry
+ruff check scripts tests
+ruff format --check scripts tests
+python -m pytest
+```
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the PR path and [docs/task-authoring.md](docs/task-authoring.md) for how to write a useful evaluation task.
+
+## Advanced Evidence
+
+Use these optional evidence paths when you need deeper process, review, or comparison data without making the Quick Start heavier.
 
 <details>
 <summary><strong>Optional:</strong> browse available tasks before starting a run</summary>
 
-Generate the bilingual task registry when you want to choose or inspect benchmark tasks before `prepare_run`:
+Generate the bilingual task registry when you want to browse task metadata before choosing a run:
 
 ```bash
-python -m scripts.eval registry
+ai-eval registry
 ```
 
 `benchmark_registry.py` writes `benchmarks/index.html` and `benchmarks/index.zh-CN.html`. It is a language-agnostic catalog of executable tasks under `benchmarks/tasks/`; it describes task metadata and entrypoints, not run results.
 
 </details>
 
-1. Prepare a run:
-
-```bash
-python -m scripts.eval start --workflow <workflow> --task <task-id> [--model <model>]
-```
-
 <details>
 <summary><strong>Optional:</strong> collect hook-based process evidence</summary>
 
-Before starting Claude Code or Codex, export the current run environment:
+Hook evidence improves `process_evidence` and context link metrics. Before starting Claude Code or Codex:
 
 ```bash
-eval "$(python -m scripts.eval env)"
-python -m scripts.eval hooks
+eval "$(ai-eval env)"
+ai-eval hooks
 ```
 
-The installer writes run-scoped Codex and Claude Code hook files under the current target worktree, then adds them to that worktree's local git exclude.
+If untracked hook files already exist, use `ai-eval hooks --merge`. Tracked hook files are never modified.
 
-If untracked hook files already exist, use:
-
-```bash
-python -m scripts.eval hooks --merge
-```
-
-This appends the evaluation recorder hooks without duplicating commands. Tracked hook files are never modified.
-
-The agent must be started from the same shell so it inherits `AI_EVAL_*`. If you are outside the evaluation repo root, run this first:
-
-```bash
-eval "$(/absolute/path/to/ai-coding-evaluation/bin/ai-eval env)"
-```
-
-Then run `python -m scripts.eval hooks` from the evaluation repo.
-
-Hooks improve `process_evidence` and link metrics, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
+The agent must be started from the same shell so it inherits `AI_EVAL_*`. Hooks improve evidence, but the run can be scored without them. See [docs/hooks.md](docs/hooks.md).
 
 </details>
-
-Then enter the target worktree:
-
-```bash
-cd "$AI_EVAL_TARGET_WORKTREE"
-```
-
-Run the AI or human workflow against the prepared target worktree. Use the `task.md` copied into the run directory as the coding prompt; use `task.zh-CN.md` if you prefer Chinese. `acceptance.md` stays in the benchmark task directory for review only.
-
-2. After coding finishes, collect test and diff evidence:
-
-```bash
-python -m scripts.eval collect
-```
 
 <details>
 <summary><strong>Optional:</strong> calculate adoption metrics</summary>
 
-If you want line-level adoption metrics, have the AI workflow or reviewer commit the candidate result, then compare that candidate commit with the final accepted commit. This is a link-diagnostic metric only; it does not affect `score.json`.
+For line-level adoption metrics, have the workflow or reviewer commit the candidate result, then compare that candidate commit with the final accepted commit:
 
 ```bash
-cd runs/<workflow>/<task-id>/<run-id>/target
-git add .
-git commit -m "candidate for <task-id>"
-git rev-parse HEAD
-```
-
-After the final accepted version exists as a commit:
-
-```bash
-python -m scripts.eval adoption \
-  --candidate-ref <candidate-sha> \
-  --accepted-ref <accepted-sha>
+ai-eval adoption --candidate-ref <candidate-sha> --accepted-ref <accepted-sha>
 ```
 
 `candidate_ref` is the AI candidate commit. `accepted_ref` is the final accepted commit. `target.solution_ref` remains a reference solution and is not used as the default adoption source.
@@ -151,56 +198,35 @@ python -m scripts.eval adoption \
 <details>
 <summary><strong>Optional:</strong> inspect reference solution diff</summary>
 
-If the task has `target.solution_ref`, inspect the candidate worktree against the reference implementation before scoring. The helper respects `task.scope.allowed_paths` when present, prints a reviewer-friendly diff view with per-file headers and line numbers, and highlights candidate-side lines with a red background and reference-side lines with a green background.
+If the task has `target.solution_ref`, inspect candidate-vs-reference context before scoring:
 
 ```bash
-python -m scripts.eval solution-diff --color auto
+ai-eval solution-diff --color auto
 ```
 
-This is only context for reviewers; do not score a run by similarity to the reference solution.
+This is reviewer context only; do not score a run by similarity to the reference solution.
 
 </details>
 
-3. Choose one review path before calculating the final score.
+<details>
+<summary><strong>Optional:</strong> use LLM review</summary>
 
-Manual path, recommended for the first run: pass the six review scores directly. This creates or updates `score.json` and calculates the final score in one step. Each review value must be from `0.0` to `1.0`. Omit `--manual-hard-gate` unless a reviewer explicitly wants to cap the run:
-
-```bash
-python -m scripts.eval score \
-  --set-review \
-    correctness=1.0 \
-    regression_safety=1.0 \
-    maintainability=0.8 \
-    test_quality=0.8 \
-    security=1.0 \
-    process_compliance=0.6
-```
-
-If a manual hard gate is needed, add `--manual-hard-gate public_api_break`. `python -m scripts.eval score --init` is still available for reviewers who prefer editing a draft JSON file by hand.
-
-LLM review path: use an OpenAI-compatible reviewer to create `score.json` and calculate the final score in one step:
+LLM review can create `score.json` through an OpenAI-compatible reviewer:
 
 ```bash
 AI_EVAL_REVIEW_MODEL=<model> \
 AI_EVAL_REVIEW_BASE_URL=https://api.openai.com/v1 \
-python -m scripts.eval llm-review
+ai-eval llm-review
 ```
 
 For DeepSeek-compatible review, use `AI_EVAL_REVIEW_BASE_URL=https://api.deepseek.com` and pass `--api-key-env DEEPSEEK_API_KEY`.
 
-4. Generate a report or dashboard:
-
-```bash
-python -m scripts.eval report
-python -m scripts.eval dashboard
-```
-
-`report.py` is the quick terminal/Markdown report. `dashboard.py` is a read-only visual comparison board for workflows, models, per-task results, and context link metrics. It writes both `reports/dashboard.html` and `reports/dashboard.zh-CN.html`, and does not modify `run.json`, `score.json`, or review results.
+</details>
 
 <details>
 <summary><strong>Optional:</strong> generate context link metrics</summary>
 
-Generate cross-run context link metrics from hook evidence:
+Cross-run context link metrics are generated from hook evidence:
 
 ```bash
 python -m scripts.context_metrics --runs runs --output reports/context-metrics.json
@@ -216,6 +242,9 @@ The shortcut CLI does not add a new evaluation protocol. It only remembers the l
 
 The shortcut CLI is a thin wrapper around the stable primitives. Use these when debugging, scripting CI, or operating on a run without `runs/.current.json`:
 
+<details>
+<summary>Show low-level primitive commands</summary>
+
 ```bash
 python -m scripts.prepare_run --workflow <workflow> --task <task-id> [--model <model>]
 python -m scripts.collect_run --task benchmarks/tasks/<task-id>/task.json --run runs/<workflow>/<task-id>/<run-id>/run.json --write
@@ -225,6 +254,8 @@ python -m scripts.report --runs runs
 python -m scripts.dashboard --runs runs --tasks benchmarks/tasks --output reports/dashboard.html
 python -m scripts.benchmark_registry --tasks benchmarks/tasks --output benchmarks/index.html
 ```
+
+</details>
 
 See [examples/go-bugfix-l1-c1](examples/go-bugfix-l1-c1) for a completed end-to-end run.
 
@@ -325,7 +356,7 @@ See [docs/evaluation-method.md](docs/evaluation-method.md) for the metric model 
 
 ## Task Type Templates
 
-This repository currently ships task-type templates, not real benchmark tasks:
+This repository ships executable Go benchmark tasks plus task-type templates:
 
 ```text
 bugfix      Fix a real defect

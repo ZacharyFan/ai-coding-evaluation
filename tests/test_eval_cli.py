@@ -134,6 +134,56 @@ def write_hook_templates(root: Path) -> None:
     )
 
 
+def write_eval_structure(root: Path) -> None:
+    (root / "scripts").mkdir(parents=True, exist_ok=True)
+    (root / "scripts" / "eval.py").write_text("# eval cli\n", encoding="utf-8")
+    (root / "pyproject.toml").write_text("[tool.pytest.ini_options]\n", encoding="utf-8")
+    (root / "README.md").write_text("# Test evaluation repo\n", encoding="utf-8")
+
+
+def write_demo_source(root: Path) -> None:
+    demo = root / "examples" / "go-bugfix-l1-c1" / "run"
+    demo.mkdir(parents=True)
+    (demo / "task.md").write_text("# Demo task\n", encoding="utf-8")
+    (demo / "events.jsonl").write_text("{}\n", encoding="utf-8")
+    write_json(
+        demo / "run.json",
+        {
+            "workflow_id": "baseline",
+            "task_id": "go-bugfix-l1-c1",
+            "model": "gpt-5.5",
+            "duration_minutes": 0.004,
+            "human_interventions": 0,
+            "target": {
+                "repo": "https://github.com/example/demo.git",
+                "base_ref": "abc123",
+                "language": "go",
+                "package_manager": "go",
+                "working_directory": ".",
+                "worktree": "examples/go-bugfix-l1-c1/run/target",
+            },
+            "tests": {"required_passed": True, "hidden_passed": None},
+            "diff": {"files_changed": 1, "unrelated_files_changed": 0, "unrelated_files": []},
+            "event_collection": {
+                "event_count": 1,
+                "events_path": "examples/go-bugfix-l1-c1/run/events.jsonl",
+                "sources": ["codex"],
+            },
+        },
+    )
+    write_json(
+        demo / "score.json",
+        {
+            "workflow_id": "baseline",
+            "task_id": "go-bugfix-l1-c1",
+            "score": 100.0,
+            "raw_score": 100.0,
+            "attention_adjusted_score": 100.0,
+            "hard_gates": [],
+        },
+    )
+
+
 def init_eval_root(tmp_path: Path) -> tuple[Path, str]:
     remote, base_ref = init_remote_repo(tmp_path)
     root = tmp_path / "evaluation"
@@ -309,6 +359,100 @@ def test_registry_cli_writes_bilingual_task_registry(tmp_path):
         root / "benchmarks" / "index.html"
     ).read_text(encoding="utf-8")
     assert "新增导入预览" in (root / "benchmarks" / "index.zh-CN.html").read_text(encoding="utf-8")
+
+
+def test_doctor_passes_required_checks_and_reports_optional_warnings(tmp_path, monkeypatch):
+    root, _ = init_eval_root(tmp_path)
+    write_eval_structure(root)
+    write_demo_source(root)
+    monkeypatch.setattr(
+        eval_module.shutil, "which", lambda name: None if name == "go" else f"/bin/{name}"
+    )
+
+    result = eval_module.doctor(root)
+
+    required = [check for check in result["checks"] if check["required"]]
+    optional = [check for check in result["checks"] if not check["required"]]
+    assert result["ok"] is True
+    assert all(check["status"] == "ok" for check in required)
+    assert any(check["name"] == "go" and check["status"] == "warn" for check in optional)
+    assert "OK  python" in eval_module.format_doctor(result)
+    assert "WARN go" in eval_module.format_doctor(result)
+
+
+def test_doctor_fails_when_required_repo_structure_is_missing(tmp_path):
+    root = tmp_path / "evaluation"
+    (root / "benchmarks" / "tasks").mkdir(parents=True)
+
+    result = eval_module.doctor(root)
+
+    assert result["ok"] is False
+    assert any(
+        check["name"] == "repo structure"
+        and check["status"] == "fail"
+        and "scripts/eval.py" in check["detail"]
+        for check in result["checks"]
+    )
+
+
+def test_demo_copies_example_run_without_overwriting_existing_demo(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_demo_source(root)
+
+    first = eval_module.create_demo_run(root)
+    score_path = first["run_dir"] / "score.json"
+    persisted = json.loads(score_path.read_text(encoding="utf-8"))
+    persisted["score"] = 42.0
+    write_json(score_path, persisted)
+
+    second = eval_module.create_demo_run(root)
+
+    run = json.loads((first["run_dir"] / "run.json").read_text(encoding="utf-8"))
+    score = json.loads(score_path.read_text(encoding="utf-8"))
+    assert first["created"] is True
+    assert second["created"] is False
+    assert first["run_dir"] == root / "runs" / "demo" / "go-bugfix-l1-c1" / "example"
+    assert run["workflow_id"] == "demo"
+    assert run["target"]["worktree"] == "runs/demo/go-bugfix-l1-c1/example/target"
+    assert (
+        run["event_collection"]["events_path"] == "runs/demo/go-bugfix-l1-c1/example/events.jsonl"
+    )
+    assert score["workflow_id"] == "demo"
+    assert score["score"] == 42.0
+
+
+def test_demo_reset_rebuilds_existing_demo(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_demo_source(root)
+    demo = eval_module.create_demo_run(root)
+    score_path = demo["run_dir"] / "score.json"
+    persisted = json.loads(score_path.read_text(encoding="utf-8"))
+    persisted["score"] = 42.0
+    write_json(score_path, persisted)
+
+    reset = eval_module.create_demo_run(root, reset=True)
+
+    score = json.loads(score_path.read_text(encoding="utf-8"))
+    assert reset["created"] is True
+    assert score["score"] == 100.0
+
+
+def test_demo_cli_prints_next_commands(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_demo_source(root)
+
+    process = subprocess.run(
+        [sys.executable, "-m", "scripts.eval", "--repo", str(root), "demo"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    assert "runs/demo/go-bugfix-l1-c1/example" in process.stdout
+    assert "python -m scripts.eval report --runs runs" in process.stdout
+    assert "python -m scripts.eval dashboard --runs runs --tasks benchmarks/tasks" in process.stdout
 
 
 def test_collect_uses_current_pointer(tmp_path):

@@ -1,6 +1,7 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+*.egg-info/
 .DS_Store
 runs/
 reports/
@@ -12,3 +13,8 @@ benchmarks/local/*
 
 .references/
 .ruff_cache/
+
+venv/
+env/
+ENV/
+.venv
