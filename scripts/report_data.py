@@ -124,3 +124,101 @@ def group_by(runs: list[dict[str, Any]], key: str) -> dict[str, list[dict[str, A
         label = str(value) if value not in (None, "") else UNKNOWN
         groups.setdefault(label, []).append(run)
     return groups
+
+
+DEFAULT_REFERENCE_WORKFLOW = "baseline"
+
+
+def arm_key(run: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(run.get("workflow_id") or UNKNOWN),
+        str(run.get("task_id") or UNKNOWN),
+        str(run.get("model_label") or UNKNOWN),
+    )
+
+
+def arm_records(runs: list[dict[str, Any]]) -> dict[tuple[str, str, str], dict[str, Any]]:
+    """Aggregate scored runs into arms keyed by (workflow, task, model)."""
+    scores_by_arm: dict[tuple[str, str, str], list[float]] = {}
+    for run in runs:
+        if not is_scored(run):
+            continue
+        scores_by_arm.setdefault(arm_key(run), []).append(float(run["score"]))
+    return {
+        key: {"scores": scores, "mean_score": mean(scores)} for key, scores in scores_by_arm.items()
+    }
+
+
+def paired_deltas(
+    runs: list[dict[str, Any]], reference_workflow: str = DEFAULT_REFERENCE_WORKFLOW
+) -> list[dict[str, Any]]:
+    """Pair candidate arms with the reference workflow on (task, model) and diff the means.
+
+    Task difficulty cancels inside a pair, so deltas isolate the workflow difference.
+    A candidate arm whose (task, model) key has no reference arm yields no pair.
+    """
+    arms = arm_records(runs)
+    reference_means = {
+        (task_id, model_label): arm["mean_score"]
+        for (workflow_id, task_id, model_label), arm in arms.items()
+        if workflow_id == reference_workflow
+    }
+    deltas: list[dict[str, Any]] = []
+    for (workflow_id, task_id, model_label), arm in sorted(arms.items()):
+        if workflow_id == reference_workflow:
+            continue
+        reference_mean = reference_means.get((task_id, model_label))
+        if reference_mean is None:
+            continue
+        deltas.append(
+            {
+                "workflow_id": workflow_id,
+                "task_id": task_id,
+                "model_label": model_label,
+                "candidate_mean": round(arm["mean_score"], 2),
+                "reference_mean": round(reference_mean, 2),
+                "delta": round(arm["mean_score"] - reference_mean, 2),
+            }
+        )
+    return deltas
+
+
+def paired_summary(
+    runs: list[dict[str, Any]], reference_workflow: str = DEFAULT_REFERENCE_WORKFLOW
+) -> dict[str, Any]:
+    """Summarize paired deltas per candidate workflow.
+
+    coverage = pairs / candidate arms; sign_consistency = max(positive, negative) / pairs.
+    """
+    arms = arm_records(runs)
+    deltas = paired_deltas(runs, reference_workflow)
+
+    arms_by_workflow: dict[str, int] = {}
+    for workflow_id, _task_id, _model_label in sorted(arms):
+        if workflow_id != reference_workflow:
+            arms_by_workflow[workflow_id] = arms_by_workflow.get(workflow_id, 0) + 1
+
+    deltas_by_workflow: dict[str, list[dict[str, Any]]] = {}
+    for delta in deltas:
+        deltas_by_workflow.setdefault(delta["workflow_id"], []).append(delta)
+
+    by_workflow: dict[str, dict[str, Any]] = {}
+    for workflow_id, arm_count in arms_by_workflow.items():
+        workflow_deltas = deltas_by_workflow.get(workflow_id, [])
+        pairs = len(workflow_deltas)
+        positive = sum(1 for delta in workflow_deltas if delta["delta"] > 0)
+        negative = sum(1 for delta in workflow_deltas if delta["delta"] < 0)
+        by_workflow[workflow_id] = {
+            "arms": arm_count,
+            "pairs": pairs,
+            "coverage": pairs / arm_count if arm_count else None,
+            "mean_delta": mean([delta["delta"] for delta in workflow_deltas]) if pairs else None,
+            "positive": positive,
+            "negative": negative,
+            "sign_consistency": max(positive, negative) / pairs if pairs else None,
+        }
+    return {
+        "reference_workflow": reference_workflow,
+        "pairs_total": len(deltas),
+        "by_workflow": by_workflow,
+    }

@@ -5,7 +5,14 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from scripts.report_data import collect_runs, group_by, is_scored, summarize_runs
+from scripts.report_data import (
+    DEFAULT_REFERENCE_WORKFLOW,
+    collect_runs,
+    group_by,
+    is_scored,
+    paired_summary,
+    summarize_runs,
+)
 
 
 def fmt(value: Any) -> str:
@@ -59,11 +66,31 @@ def print_summary(runs: list[dict[str, Any]]) -> None:
         )
 
 
+def print_paired_summary(runs: list[dict[str, Any]], reference_workflow: str) -> None:
+    summary = paired_summary(runs, reference_workflow)
+    if not summary["pairs_total"]:
+        return
+    print(f"\nPaired vs reference workflow: {reference_workflow}")
+    print("\n| Workflow | Pairs | Arm Coverage | Mean Score Delta | Sign Consistency |")
+    print("| --- | ---: | ---: | ---: | ---: |")
+    for workflow, entry in sorted(summary["by_workflow"].items()):
+        coverage = f"{entry['pairs']}/{entry['arms']}"
+        print(
+            f"| {workflow} | {entry['pairs']} | {coverage} | "
+            f"{entry['mean_delta']:+.2f} | {entry['sign_consistency']:.2f} |"
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate a markdown report from run and score files."
     )
     parser.add_argument("--runs", type=Path, default=Path("runs"), help="Runs root directory")
+    parser.add_argument(
+        "--reference-workflow",
+        default=DEFAULT_REFERENCE_WORKFLOW,
+        help="Workflow to diff candidate workflows against in the paired summary",
+    )
     return parser.parse_args()
 
 
@@ -75,6 +102,7 @@ def main() -> None:
         return
     print_runs(runs)
     print_summary(runs)
+    print_paired_summary(runs, args.reference_workflow)
 
 
 if __name__ == "__main__":
