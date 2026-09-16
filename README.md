@@ -154,6 +154,28 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for the PR path and [docs/task-authoring
 Use these optional evidence paths when you need deeper process, review, or comparison data without making the Quick Start heavier.
 
 <details>
+<summary><strong>Optional:</strong> compare workflows with paired deltas</summary>
+
+When two workflows have scored runs on the same tasks, the report prints a paired summary that diffs each workflow against a reference one:
+
+```bash
+ai-eval report --runs runs --reference-workflow baseline
+```
+
+```text
+Paired vs reference workflow: baseline
+
+| Workflow | Pairs | Arm Coverage | Mean Score Delta | Sign Consistency |
+| plan-first | 4 | 4/5 | +3.20 | 0.75 |
+```
+
+Per task and model, candidate and reference scores are averaged into arms, then subtracted. Task difficulty cancels inside each pair, so the delta isolates the workflow difference instead of mixing in task variance. `Mean Score Delta` is the magnitude, `Sign Consistency` is the share of pairs pointing the same direction (robust at small task counts), and `Arm Coverage` shows how many candidate arms found a matching reference arm.
+
+For valid pairs, run both workflows on the same task set with the same model, and alternate the order (A/B/A/B) so time drift lands on both sides. Arms whose task or model has no reference counterpart stay in the coverage denominator but produce no pair. Pass `--no-paired` to skip the section.
+
+</details>
+
+<details>
 <summary><strong>Optional:</strong> browse available tasks before starting a run</summary>
 
 Generate the bilingual task registry when you want to browse task metadata before choosing a run:

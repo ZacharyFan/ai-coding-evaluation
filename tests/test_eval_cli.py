@@ -455,6 +455,75 @@ def test_demo_cli_prints_next_commands(tmp_path):
     assert "python -m scripts.eval dashboard --runs runs --tasks benchmarks/tasks" in process.stdout
 
 
+def write_scored_run(root: Path, workflow: str, task: str, run_id: str, score: float) -> None:
+    run_dir = root / "runs" / workflow / task / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    write_json(
+        run_dir / "run.json",
+        {
+            "workflow_id": workflow,
+            "task_id": task,
+            "model": "gpt-5.5",
+            "duration_minutes": 2,
+            "human_interventions": 1,
+            "tests": {"required_passed": True, "hidden_passed": None},
+        },
+    )
+    write_json(
+        run_dir / "score.json",
+        {
+            "workflow_id": workflow,
+            "task_id": task,
+            "score": score,
+            "attention_adjusted_score": score,
+            "hard_gates": [],
+        },
+    )
+
+
+def run_report_cli(root: Path, *extra_args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "scripts.eval", "--repo", str(root), "report", *extra_args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_report_cli_prints_paired_summary(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_scored_run(root, "baseline", "example-task", "r1", 80.0)
+    write_scored_run(root, "plan-first", "example-task", "r1", 88.0)
+
+    process = run_report_cli(root, "--reference-workflow", "baseline")
+
+    assert process.returncode == 0
+    assert "Paired vs reference workflow: baseline" in process.stdout
+    assert "| plan-first | 1 | 1/1 | +8.00 | 1.00 |" in process.stdout
+
+
+def test_report_cli_no_paired_flag_skips_paired_summary(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_scored_run(root, "baseline", "example-task", "r1", 80.0)
+    write_scored_run(root, "plan-first", "example-task", "r1", 88.0)
+
+    process = run_report_cli(root, "--no-paired")
+
+    assert process.returncode == 0
+    assert "Paired vs" not in process.stdout
+
+
+def test_report_cli_single_workflow_skips_paired_summary(tmp_path):
+    root, _ = init_eval_root(tmp_path)
+    write_scored_run(root, "baseline", "example-task", "r1", 80.0)
+
+    process = run_report_cli(root)
+
+    assert process.returncode == 0
+    assert "Paired vs" not in process.stdout
+
+
 def test_collect_uses_current_pointer(tmp_path):
     root, _ = init_eval_root(tmp_path)
     eval_module.start_run(root, "baseline", "example-task", run_id="demo-001")

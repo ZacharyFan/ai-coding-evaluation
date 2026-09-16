@@ -18,3 +18,5 @@ venv/
 env/
 ENV/
 .venv
+
+.idea/

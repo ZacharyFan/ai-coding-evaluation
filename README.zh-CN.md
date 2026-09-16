@@ -154,6 +154,28 @@ PR 流程见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。如何写好用例
 这些可选证据路径用于更深入的过程、review 或对比分析，不再压到 Quick Start 默认阅读流里。
 
 <details>
+<summary><strong>可选：</strong>用成对 Δ 对比 workflows</summary>
+
+当两个 workflow 在相同任务上都有已评分 run 时，report 会输出成对汇总，把每个 workflow 与参考 workflow 逐一相减：
+
+```bash
+ai-eval report --runs runs --reference-workflow baseline
+```
+
+```text
+Paired vs reference workflow: baseline
+
+| Workflow | Pairs | Arm Coverage | Mean Score Delta | Sign Consistency |
+| plan-first | 4 | 4/5 | +3.20 | 0.75 |
+```
+
+按 (任务, 模型) 把候选与参考两侧的分数各自聚成臂再相减。任务难度在同一对内自动抵消，Δ 只反映 workflow 差异，不再混入任务方差。`Mean Score Delta` 是幅度；`Sign Consistency` 是同方向 pair 的占比（任务数少时依然稳健）；`Arm Coverage` 表示多少候选臂找到了配对的参考臂。
+
+要让配对成立，两个 workflow 需在相同任务集上用相同模型运行，并交替顺序（A/B/A/B），让时间漂移均摊到两侧。任务或模型在参考侧找不到对应臂时，该臂计入 coverage 分母但不产出 pair。传入 `--no-paired` 可跳过该段落。
+
+</details>
+
+<details>
 <summary><strong>可选：</strong>启动 run 前浏览可用任务</summary>
 
 想在选择 run 前浏览任务 metadata，可以生成双语任务索引：

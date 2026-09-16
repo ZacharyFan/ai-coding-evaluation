@@ -149,3 +149,23 @@ Probabilities:
 30 tasks    75% useful for selecting a main workflow
 50+ tasks   80-85% useful for optimizing workflow details
 ```
+
+## Paired Comparison
+
+Comparing per-workflow average scores treats the two samples as independent, so between-task variance (one task everyone fails, another everyone aces) lands inside the comparison noise. The paired summary in `python -m scripts.report --reference-workflow <workflow>` keeps the pairing the protocol already requires and subtracts within it:
+
+```text
+arm          mean score of one workflow on one (task, model)
+pair         candidate arm minus reference arm on the same (task, model)
+delta        candidate_mean - reference_mean
+```
+
+Task difficulty cancels inside each pair, so the remaining signal is the workflow difference. The summary reports:
+
+```text
+mean_delta        average of per-task deltas (magnitude)
+sign_consistency  share of pairs pointing the same direction (robust at small N)
+arm coverage      candidate arms that found a matching reference arm
+```
+
+Requirements for valid pairs: same task set, same model per pair, and alternating run order (A/B/A/B) so time drift spreads across both workflows instead of confounding with one. Arms whose task or model has no reference counterpart stay in the coverage denominator but produce no pair. Paired deltas are an analysis view over existing runs; they add no scoring or collection changes.

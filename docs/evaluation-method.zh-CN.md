@@ -149,3 +149,23 @@ python -m scripts.context_metrics --runs runs --output reports/context-metrics.j
 30 个任务     75% 适合选择主力工作流
 50+ 个任务    80-85% 适合优化工作流细节
 ```
+
+## 成对比较
+
+逐 workflow 求均值再相减，会把两批样本当作独立样本：任务间方差（有的任务谁都做不出，有的任务谁都满分）全部落入比较噪声。`python -m scripts.report --reference-workflow <workflow>` 输出的成对汇总保留了协议本来就要求的配对结构，并在配对内相减：
+
+```text
+arm          某个 workflow 在一个 (任务, 模型) 上的平均分
+pair         同一 (任务, 模型) 上候选臂减参考臂
+delta        candidate_mean - reference_mean
+```
+
+任务难度在同一对内抵消，剩下的信号才是 workflow 差异。汇总输出：
+
+```text
+mean_delta        每任务 Δ 的平均值（幅度）
+sign_consistency  指向同一方向的 pair 占比（小样本下依然稳健）
+arm coverage      找到配对参考臂的候选臂比例
+```
+
+有效配对的前提：同一批任务、每对同模型、交替运行顺序（A/B/A/B），让时间漂移均摊到两侧而不是集中到一边。任务或模型在参考侧找不到对应臂时，该臂计入 coverage 分母但不产出 pair。成对 Δ 只是现有 run 数据之上的分析视图，不改变评分和采集。

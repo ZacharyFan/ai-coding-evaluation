@@ -481,7 +481,13 @@ def adoption_run(
     return result["adoption"]
 
 
-def print_report(root: Path, runs: Path) -> None:
+def print_report(
+    root: Path,
+    runs: Path,
+    *,
+    reference_workflow: str = "baseline",
+    paired: bool = True,
+) -> None:
     run_root = resolve_repo_path(root, runs)
     collected = report_module.collect_runs(run_root)
     if not collected:
@@ -489,6 +495,8 @@ def print_report(root: Path, runs: Path) -> None:
         return
     report_module.print_runs(collected)
     report_module.print_summary(collected)
+    if paired:
+        report_module.print_paired_summary(collected, reference_workflow)
 
 
 def write_dashboard(
@@ -671,6 +679,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     report = subparsers.add_parser("report", help="Print terminal report")
     report.add_argument("--runs", type=Path, default=Path("runs"))
+    report.add_argument(
+        "--reference-workflow",
+        default="baseline",
+        help="Workflow to diff candidate workflows against in the paired summary",
+    )
+    report.add_argument(
+        "--no-paired", action="store_true", help="Skip the paired vs reference summary"
+    )
 
     dashboard = subparsers.add_parser("dashboard", help="Generate static HTML dashboards")
     dashboard.add_argument("--runs", type=Path, default=Path("runs"))
@@ -768,7 +784,12 @@ def main(argv: list[str] | None = None) -> None:
             print(json.dumps(result, indent=2, sort_keys=True))
             return
         if args.command == "report":
-            print_report(root, args.runs)
+            print_report(
+                root,
+                args.runs,
+                reference_workflow=args.reference_workflow,
+                paired=not args.no_paired,
+            )
             return
         if args.command == "dashboard":
             for path in write_dashboard(root, args.runs, args.tasks, args.output, args.zh_output):
